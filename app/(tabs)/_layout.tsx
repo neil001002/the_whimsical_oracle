@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { HomeTabIcon, HistoryTabIcon, SettingsTabIcon } from '@/components/icons/TabIcons';
+import { HomeIcon, HistoryIcon, SettingsIcon } from '@/components/icons/MysticalIcons';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -13,20 +13,16 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.glassStrong,
           borderTopWidth: 1,
-          height: 90,
-          paddingBottom: 25,
-          paddingTop: 15,
+          height: 85,
+          paddingBottom: 20,
+          paddingTop: 10,
         },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
-          marginTop: 8,
-          fontFamily: 'PlayfairDisplay_400Regular',
-        },
-        tabBarIconStyle: {
-          marginTop: 5,
+          marginTop: 4,
         },
       }}
     >
@@ -34,10 +30,10 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Oracle',
-          tabBarIcon: ({ focused }) => (
-            <HomeTabIcon 
-              focused={focused}
-              size={32}
+          tabBarIcon: ({ color, size, focused }) => (
+            <HomeIcon 
+              color={focused ? colors.accent : colors.textSecondary} 
+              size={size} 
             />
           ),
         }}
@@ -46,10 +42,10 @@ export default function TabsLayout() {
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ focused }) => (
-            <HistoryTabIcon 
-              focused={focused}
-              size={32}
+          tabBarIcon: ({ color, size, focused }) => (
+            <HistoryIcon 
+              color={focused ? colors.accent : colors.textSecondary} 
+              size={size} 
             />
           ),
         }}
@@ -58,10 +54,10 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ focused }) => (
-            <SettingsTabIcon 
-              focused={focused}
-              size={32}
+          tabBarIcon: ({ color, size, focused }) => (
+            <SettingsIcon 
+              color={focused ? colors.accent : colors.textSecondary} 
+              size={size} 
             />
           ),
         }}
