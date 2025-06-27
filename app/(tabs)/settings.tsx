@@ -15,7 +15,8 @@ import {
   Vibrate, 
   Crown, 
   Palette,
-  ChevronRight 
+  ChevronRight,
+  Mic
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
@@ -30,8 +31,20 @@ export default function SettingsScreen() {
     selectedPersona, 
     userPreferences, 
     updatePersona, 
-    updatePreferences 
+    updatePreferences,
+    playOmenVoice,
+    stopVoice,
+    isPlayingVoice
   } = useOracle();
+
+  const testVoice = async () => {
+    if (isPlayingVoice) {
+      await stopVoice();
+    } else {
+      const testText = "Greetings, seeker. This is how your chosen oracle sounds when speaking mystical wisdom.";
+      await playOmenVoice(testText, selectedPersona.voiceStyle);
+    }
+  };
 
   const renderPersonaSelector = () => (
     <MysticalCard style={styles.sectionCard}>
@@ -115,7 +128,7 @@ export default function SettingsScreen() {
 
       <View style={styles.preferenceItem}>
         <View style={styles.preferenceLeft}>
-          <Volume2 color={colors.accent} size={20} />
+          <Mic color={colors.accent} size={20} />
           <View style={styles.preferenceText}>
             <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
               Voice Narration
@@ -132,6 +145,20 @@ export default function SettingsScreen() {
           thumbColor={colors.text}
         />
       </View>
+
+      {userPreferences.voiceEnabled && (
+        <View style={styles.voiceTestContainer}>
+          <MagicalButton
+            title={isPlayingVoice ? "Stop Voice Test" : "Test Voice"}
+            onPress={testVoice}
+            variant="secondary"
+            size="small"
+          />
+          <Text style={[styles.voiceTestNote, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+            Test how your selected oracle sounds
+          </Text>
+        </View>
+      )}
     </MysticalCard>
   );
 
@@ -279,6 +306,18 @@ const styles = StyleSheet.create({
   preferenceSubtitle: {
     fontSize: 12,
     opacity: 0.7,
+  },
+  voiceTestContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  voiceTestNote: {
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: 'center',
   },
   subscriptionHeader: {
     flexDirection: 'row',
