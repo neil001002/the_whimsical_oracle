@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { HomeIcon, HistoryIcon, SettingsIcon } from '@/components/icons/MysticalIcons';
+import { HomeTabIcon, HistoryTabIcon, SettingsTabIcon } from '@/components/icons/TabIcons';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -23,6 +23,7 @@ export default function TabsLayout() {
           fontSize: 12,
           fontWeight: '600',
           marginTop: 4,
+          fontFamily: 'PlayfairDisplay_400Regular',
         },
       }}
     >
@@ -30,10 +31,11 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Oracle',
-          tabBarIcon: ({ color, size, focused }) => (
-            <HomeIcon 
-              color={focused ? colors.accent : colors.textSecondary} 
+          tabBarIcon: ({ focused, size }) => (
+            <HomeTabIcon 
+              focused={focused}
               size={size} 
+              color={colors.accent}
             />
           ),
         }}
@@ -42,10 +44,11 @@ export default function TabsLayout() {
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ color, size, focused }) => (
-            <HistoryIcon 
-              color={focused ? colors.accent : colors.textSecondary} 
+          tabBarIcon: ({ focused, size }) => (
+            <HistoryTabIcon 
+              focused={focused}
               size={size} 
+              color={colors.accent}
             />
           ),
         }}
@@ -54,10 +57,11 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size, focused }) => (
-            <SettingsIcon 
-              color={focused ? colors.accent : colors.textSecondary} 
+          tabBarIcon: ({ focused, size }) => (
+            <SettingsTabIcon 
+              focused={focused}
               size={size} 
+              color={colors.accent}
             />
           ),
         }}
