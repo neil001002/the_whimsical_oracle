@@ -1,0 +1,55 @@
+<svg width="1284" height="2778" viewBox="0 0 1284 2778" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1284" height="2778" fill="#0F0F23"/>
+  
+  <!-- Mystical background pattern -->
+  <defs>
+    <radialGradient id="mysticalGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#4C1D95;stop-opacity:0.8"/>
+      <stop offset="50%" style="stop-color:#7C3AED;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#0F0F23;stop-opacity:0"/>
+    </radialGradient>
+    
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background mystical glow -->
+  <circle cx="642" cy="1389" r="600" fill="url(#mysticalGlow)"/>
+  
+  <!-- Stars -->
+  <circle cx="200" cy="300" r="2" fill="#E5E7EB" opacity="0.8"/>
+  <circle cx="400" cy="200" r="1.5" fill="#F3F4F6" opacity="0.6"/>
+  <circle cx="800" cy="250" r="2" fill="#E5E7EB" opacity="0.7"/>
+  <circle cx="1000" cy="180" r="1" fill="#F9FAFB" opacity="0.5"/>
+  <circle cx="150" cy="500" r="1.5" fill="#E5E7EB" opacity="0.6"/>
+  <circle cx="1100" cy="400" r="2" fill="#F3F4F6" opacity="0.8"/>
+  
+  <!-- Central mystical orb -->
+  <circle cx="642" cy="1389" r="120" fill="#7C3AED" opacity="0.3" filter="url(#glow)"/>
+  <circle cx="642" cy="1389" r="80" fill="#A855F7" opacity="0.5" filter="url(#glow)"/>
+  <circle cx="642" cy="1389" r="40" fill="#C084FC" opacity="0.8" filter="url(#glow)"/>
+  
+  <!-- App title -->
+  <text x="642" y="1600" font-family="serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#E5E7EB" filter="url(#glow)">
+    The Whimsical Oracle
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="642" y="1660" font-family="serif" font-size="24" text-anchor="middle" fill="#9CA3AF" opacity="0.8">
+    Mystical Wisdom Awaits
+  </text>
+  
+  <!-- Decorative elements -->
+  <path d="M542 1300 L642 1250 L742 1300" stroke="#7C3AED" stroke-width="2" fill="none" opacity="0.6"/>
+  <path d="M542 1478 L642 1528 L742 1478" stroke="#7C3AED" stroke-width="2" fill="none" opacity="0.6"/>
+  
+  <!-- Bottom stars -->
+  <circle cx="300" cy="2400" r="1.5" fill="#E5E7EB" opacity="0.6"/>
+  <circle cx="600" cy="2500" r="2" fill="#F3F4F6" opacity="0.7"/>
+  <circle cx="900" cy="2450" r="1" fill="#F9FAFB" opacity="0.5"/>
+</svg>
