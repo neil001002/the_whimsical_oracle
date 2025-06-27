@@ -25,6 +25,9 @@ export default function TabsLayout() {
           marginTop: 8,
           fontFamily: 'PlayfairDisplay_400Regular',
         },
+        tabBarIconStyle: {
+          marginTop: 5,
+        },
       }}
     >
       <Tabs.Screen
