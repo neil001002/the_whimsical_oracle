@@ -11,7 +11,11 @@ export async function POST(request: Request) {
       });
     }
 
-    const elevenLabsApiKey = process.env.EXPO_PUBLIC_ELEVEN_LABS_API_KEY;
+    // In API routes, we need to access the environment variable differently
+    // EXPO_PUBLIC_ variables are available on the client, but for server-side API routes
+    // we should use a non-public environment variable
+    const elevenLabsApiKey = process.env.ELEVEN_LABS_API_KEY || process.env.EXPO_PUBLIC_ELEVEN_LABS_API_KEY;
+    
     if (!elevenLabsApiKey) {
       console.error('Eleven Labs API key not configured.');
       return new Response(JSON.stringify({ error: 'Server configuration error: API key missing' }), {
