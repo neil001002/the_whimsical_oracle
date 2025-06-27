@@ -13,16 +13,16 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.glassStrong,
           borderTopWidth: 1,
-          height: 85,
-          paddingBottom: 20,
-          paddingTop: 10,
+          height: 90,
+          paddingBottom: 25,
+          paddingTop: 15,
         },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
-          marginTop: 4,
+          marginTop: 8,
           fontFamily: 'PlayfairDisplay_400Regular',
         },
       }}
@@ -31,11 +31,10 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Oracle',
-          tabBarIcon: ({ focused, size }) => (
+          tabBarIcon: ({ focused }) => (
             <HomeTabIcon 
               focused={focused}
-              size={size} 
-              color={colors.accent}
+              size={32}
             />
           ),
         }}
@@ -44,11 +43,10 @@ export default function TabsLayout() {
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ focused, size }) => (
+          tabBarIcon: ({ focused }) => (
             <HistoryTabIcon 
               focused={focused}
-              size={size} 
-              color={colors.accent}
+              size={32}
             />
           ),
         }}
@@ -57,11 +55,10 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ focused, size }) => (
+          tabBarIcon: ({ focused }) => (
             <SettingsTabIcon 
               focused={focused}
-              size={size} 
-              color={colors.accent}
+              size={32}
             />
           ),
         }}
