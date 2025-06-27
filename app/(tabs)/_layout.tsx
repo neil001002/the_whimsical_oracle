@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
-import { Home, History, Settings } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { HomeIcon, HistoryIcon, SettingsIcon } from '@/components/icons/MysticalIcons';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -30,8 +30,11 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Oracle',
-          tabBarIcon: ({ color, size }) => (
-            <Home color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <HomeIcon 
+              color={focused ? colors.accent : colors.textSecondary} 
+              size={size} 
+            />
           ),
         }}
       />
@@ -39,8 +42,11 @@ export default function TabsLayout() {
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ color, size }) => (
-            <History color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <HistoryIcon 
+              color={focused ? colors.accent : colors.textSecondary} 
+              size={size} 
+            />
           ),
         }}
       />
@@ -48,8 +54,11 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Settings color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <SettingsIcon 
+              color={focused ? colors.accent : colors.textSecondary} 
+              size={size} 
+            />
           ),
         }}
       />
