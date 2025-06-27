@@ -1,5 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import { Audio } from 'expo-av';
+import { ELEVEN_LABS_VOICE_MAP } from '@/constants/ElevenLabsVoices';
 
 interface OraclePersona {
   id: string;
@@ -53,7 +56,10 @@ interface OracleContextType {
   updatePreferences: (preferences: Partial<UserPreferences>) => void;
   addOmen: (omen: WhimsicalOmen) => void;
   rateOmen: (omenId: string, rating: number) => void;
+  playOmenVoice: (text: string, personaVoiceStyle: string) => Promise<void>;
+  stopVoice: () => Promise<void>;
   isLoading: boolean;
+  isPlayingVoice: boolean;
 }
 
 const OracleContext = createContext<OracleContextType | undefined>(undefined);
@@ -69,9 +75,37 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   });
   const [omenHistory, setOmenHistory] = useState<WhimsicalOmen[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+  const soundObjectRef = useRef<Audio.Sound | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     loadUserData();
+    
+    // Configure audio for mobile platforms
+    if (Platform.OS !== 'web') {
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+    }
+
+    return () => {
+      // Cleanup audio when component unmounts
+      if (Platform.OS === 'web') {
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+          audioElementRef.current = null;
+        }
+      } else {
+        if (soundObjectRef.current) {
+          soundObjectRef.current.unloadAsync();
+        }
+      }
+    };
   }, []);
 
   const loadUserData = async () => {
@@ -91,7 +125,10 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (historyData) {
-        const history = JSON.parse(historyData);
+        const history = JSON.parse(historyData).map((omen: any) => ({
+          ...omen,
+          timestamp: new Date(omen.timestamp),
+        }));
         setOmenHistory(history);
       }
     } catch (error) {
@@ -117,10 +154,126 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem('userPreferences', JSON.stringify(newPrefs));
   };
 
+  const stopVoice = async () => {
+    try {
+      setIsPlayingVoice(false);
+      
+      if (Platform.OS === 'web') {
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+          audioElementRef.current = null;
+        }
+      } else {
+        if (soundObjectRef.current) {
+          await soundObjectRef.current.stopAsync();
+          await soundObjectRef.current.unloadAsync();
+          soundObjectRef.current = null;
+        }
+      }
+    } catch (error) {
+      console.error('Error stopping voice:', error);
+    }
+  };
+
+  const playOmenVoice = async (text: string, personaVoiceStyle: string) => {
+    if (!userPreferences.voiceEnabled) {
+      return;
+    }
+
+    // Stop any currently playing audio
+    await stopVoice();
+
+    try {
+      setIsPlayingVoice(true);
+      
+      const voiceId = ELEVEN_LABS_VOICE_MAP[personaVoiceStyle];
+      if (!voiceId) {
+        console.warn(`No Eleven Labs voice ID found for persona voice style: ${personaVoiceStyle}`);
+        setIsPlayingVoice(false);
+        return;
+      }
+
+      // Call the API route
+      const response = await fetch('/api/elevenlabs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text, voiceId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to fetch audio from API route:', errorData);
+        setIsPlayingVoice(false);
+        return;
+      }
+
+      const { audio: base64Audio } = await response.json();
+      if (!base64Audio) {
+        console.error('No audio data received from API route.');
+        setIsPlayingVoice(false);
+        return;
+      }
+
+      // Platform-specific audio playback
+      if (Platform.OS === 'web') {
+        // Web implementation using HTML5 Audio
+        const audioBlob = new Blob([
+          Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0))
+        ], { type: 'audio/mpeg' });
+        
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        audio.onended = () => {
+          setIsPlayingVoice(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        
+        audio.onerror = () => {
+          setIsPlayingVoice(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        
+        audioElementRef.current = audio;
+        await audio.play();
+      } else {
+        // Mobile implementation using expo-av
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: `data:audio/mpeg;base64,${base64Audio}` },
+          { shouldPlay: true }
+        );
+        
+        soundObjectRef.current = sound;
+        
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setIsPlayingVoice(false);
+          }
+        });
+        
+        await sound.playAsync();
+      }
+    } catch (error) {
+      console.error('Error playing omen voice:', error);
+      setIsPlayingVoice(false);
+    }
+  };
+
   const addOmen = async (omen: WhimsicalOmen) => {
     const newHistory = [omen, ...omenHistory];
     setOmenHistory(newHistory);
     await AsyncStorage.setItem('omenHistory', JSON.stringify(newHistory));
+
+    // Play voice narration if enabled
+    if (userPreferences.voiceEnabled) {
+      const persona = ORACLE_PERSONAS.find(p => p.id === omen.persona);
+      if (persona) {
+        const fullText = `${omen.crypticPhrase}. ${omen.interpretation}. ${omen.advice}`;
+        await playOmenVoice(fullText, persona.voiceStyle);
+      }
+    }
   };
 
   const rateOmen = async (omenId: string, rating: number) => {
@@ -140,7 +293,10 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       updatePreferences,
       addOmen,
       rateOmen,
+      playOmenVoice,
+      stopVoice,
       isLoading,
+      isPlayingVoice,
     }}>
       {children}
     </OracleContext.Provider>

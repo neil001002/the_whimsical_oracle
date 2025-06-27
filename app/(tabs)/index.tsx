@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Volume2, VolumeX } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
@@ -20,15 +21,25 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { colors, fonts, spacing } = useTheme();
-  const { selectedPersona, userPreferences, addOmen } = useOracle();
+  const { 
+    selectedPersona, 
+    userPreferences, 
+    addOmen, 
+    playOmenVoice, 
+    stopVoice, 
+    isPlayingVoice 
+  } = useOracle();
   const [currentOmen, setCurrentOmen] = useState<WhimsicalOmen | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generateOmen = async () => {
     setIsGenerating(true);
     
+    // Stop any currently playing voice
+    await stopVoice();
+    
     // Simulate mystical generation time
-    setTimeout(() => {
+    setTimeout(async () => {
       const categories: OmenCategory[] = ['career', 'relationships', 'health', 'creativity', 'finance', 'growth'];
       const symbols = ['🌟', '🔮', '🌙', '⚡', '🦋', '🕊️', '🌸', '🔥', '💎', '🌊'];
       const crypticPhrases = [
@@ -66,9 +77,18 @@ export default function HomeScreen() {
       };
 
       setCurrentOmen(newOmen);
-      addOmen(newOmen);
+      await addOmen(newOmen);
       setIsGenerating(false);
     }, 2000);
+  };
+
+  const handleVoiceToggle = async () => {
+    if (isPlayingVoice) {
+      await stopVoice();
+    } else if (currentOmen) {
+      const fullText = `${currentOmen.crypticPhrase}. ${currentOmen.interpretation}. ${currentOmen.advice}`;
+      await playOmenVoice(fullText, selectedPersona.voiceStyle);
+    }
   };
 
   const getGreeting = () => {
@@ -118,9 +138,23 @@ export default function HomeScreen() {
           {currentOmen ? (
             <MysticalCard style={styles.omenCard}>
               <View style={styles.omenContent}>
-                <Text style={[styles.omenSymbol, { fontSize: 48 }]}>
-                  {currentOmen.symbol}
-                </Text>
+                <View style={styles.omenHeader}>
+                  <Text style={[styles.omenSymbol, { fontSize: 48 }]}>
+                    {currentOmen.symbol}
+                  </Text>
+                  {userPreferences.voiceEnabled && (
+                    <TouchableOpacity
+                      onPress={handleVoiceToggle}
+                      style={[styles.voiceButton, { borderColor: colors.accent }]}
+                    >
+                      {isPlayingVoice ? (
+                        <VolumeX color={colors.accent} size={20} />
+                      ) : (
+                        <Volume2 color={colors.accent} size={20} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <Text style={[styles.omenPhrase, { color: colors.accent, fontFamily: fonts.title }]}>
                   "{currentOmen.crypticPhrase}"
                 </Text>
@@ -135,6 +169,13 @@ export default function HomeScreen() {
                     {currentOmen.advice}
                   </Text>
                 </View>
+                {isPlayingVoice && (
+                  <View style={styles.playingIndicator}>
+                    <Text style={[styles.playingText, { color: colors.accent, fontFamily: fonts.body }]}>
+                      🎵 Oracle speaking...
+                    </Text>
+                  </View>
+                )}
               </View>
             </MysticalCard>
           ) : (
@@ -224,8 +265,24 @@ const styles = StyleSheet.create({
   omenContent: {
     alignItems: 'center',
   },
-  omenSymbol: {
+  omenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
+    width: '100%',
+  },
+  omenSymbol: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  voiceButton: {
+    position: 'absolute',
+    right: 0,
+    padding: 8,
+    borderWidth: 1,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   omenPhrase: {
     fontSize: 18,
@@ -244,6 +301,7 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
+    marginBottom: 16,
   },
   adviceLabel: {
     fontSize: 14,
@@ -253,6 +311,17 @@ const styles = StyleSheet.create({
   advice: {
     fontSize: 16,
     lineHeight: 22,
+  },
+  playingIndicator: {
+    padding: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  playingText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
   emptyOmenContent: {
     alignItems: 'center',
