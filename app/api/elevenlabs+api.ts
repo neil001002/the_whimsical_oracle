@@ -1,3 +1,5 @@
+import { Buffer } from 'buffer';
+
 export async function POST(request: Request) {
   try {
     const { text, voiceId } = await request.json();
