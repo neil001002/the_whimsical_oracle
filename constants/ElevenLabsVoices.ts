@@ -1,9 +1,9 @@
 export const ELEVEN_LABS_VOICE_MAP: { [key: string]: string } = {
   'wise, ancient, mystical': 'WIqAiYIHMGzhIFSl05hm', // Rachel - wise and clear
-  'scholarly, quirky, reference-rich': 'EXAVITQu4vr4xnSDxMaL', // Bella - scholarly and articulate
-  'playful, optimistic, nature-loving': 'D38z5RcWu1voky8WS1cZ', // Antoni - warm and friendly
-  'mysterious, cryptic, mineral-focused': 'ThT5KcBeYPX3keUQqHPh', // Dorothy - mysterious and deep
-  'temporal, mysterious, time-focused': 'LcfcDJNUP1GQjkzn1PFp', // Arnold - authoritative and mystical
+  'scholarly, quirky, reference-rich': 'VKosLqqxcn5b5LHONAf5', // Bella - scholarly and articulate
+  'playful, optimistic, nature-loving': 'EzpS5M9nkZOwLrvhMMMl', // Antoni - warm and friendly
+  'mysterious, cryptic, mineral-focused': 'VKosLqqxcn5b5LHONAf5', // Dorothy - mysterious and deep
+  'temporal, mysterious, time-focused': 'EzpS5M9nkZOwLrvhMMMl', // Arnold - authoritative and mystical
 };
 
 export const ELEVEN_LABS_MODEL_ID = 'eleven_multilingual_v2';
