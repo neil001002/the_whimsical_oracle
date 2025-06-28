@@ -60,6 +60,8 @@ interface OracleContextType {
   stopVoice: () => Promise<void>;
   isLoading: boolean;
   isPlayingVoice: boolean;
+  voiceError: string | null;
+  isVoiceServiceAvailable: boolean;
 }
 
 const OracleContext = createContext<OracleContextType | undefined>(undefined);
@@ -76,6 +78,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   const [omenHistory, setOmenHistory] = useState<WhimsicalOmen[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [isVoiceServiceAvailable, setIsVoiceServiceAvailable] = useState(true);
   const soundObjectRef = useRef<Audio.Sound | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
@@ -180,6 +184,9 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Clear any previous errors
+    setVoiceError(null);
+
     // Stop any currently playing audio
     await stopVoice();
 
@@ -189,6 +196,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       const voiceId = ELEVEN_LABS_VOICE_MAP[personaVoiceStyle];
       if (!voiceId) {
         console.warn(`No Eleven Labs voice ID found for persona voice style: ${personaVoiceStyle}`);
+        setVoiceError('Voice configuration not found for this persona.');
         setIsPlayingVoice(false);
         return;
       }
@@ -205,6 +213,16 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to fetch audio from API route:', errorData);
+        
+        // Set user-friendly error message
+        const userMessage = errorData.userMessage || 'Voice feature is currently unavailable.';
+        setVoiceError(userMessage);
+        
+        // Update service availability status
+        if (errorData.isServiceUnavailable) {
+          setIsVoiceServiceAvailable(false);
+        }
+        
         setIsPlayingVoice(false);
         return;
       }
@@ -212,9 +230,13 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       const { audio: base64Audio } = await response.json();
       if (!base64Audio) {
         console.error('No audio data received from API route.');
+        setVoiceError('No audio data received. Please try again.');
         setIsPlayingVoice(false);
         return;
       }
+
+      // Reset service availability on successful response
+      setIsVoiceServiceAvailable(true);
 
       // Platform-specific audio playback
       if (Platform.OS === 'web') {
@@ -233,6 +255,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
         
         audio.onerror = () => {
           setIsPlayingVoice(false);
+          setVoiceError('Failed to play audio. Please try again.');
           URL.revokeObjectURL(audioUrl);
         };
         
@@ -257,6 +280,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error playing omen voice:', error);
+      setVoiceError('An unexpected error occurred while playing voice. Please try again.');
       setIsPlayingVoice(false);
     }
   };
@@ -266,8 +290,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     setOmenHistory(newHistory);
     await AsyncStorage.setItem('omenHistory', JSON.stringify(newHistory));
 
-    // Play voice narration if enabled
-    if (userPreferences.voiceEnabled) {
+    // Play voice narration if enabled and service is available
+    if (userPreferences.voiceEnabled && isVoiceServiceAvailable) {
       const persona = ORACLE_PERSONAS.find(p => p.id === omen.persona);
       if (persona) {
         const fullText = `${omen.crypticPhrase}. ${omen.interpretation}. ${omen.advice}`;
@@ -297,6 +321,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       stopVoice,
       isLoading,
       isPlayingVoice,
+      voiceError,
+      isVoiceServiceAvailable,
     }}>
       {children}
     </OracleContext.Provider>

@@ -18,7 +18,10 @@ export async function POST(request: Request) {
     
     if (!elevenLabsApiKey) {
       console.error('Eleven Labs API key not configured.');
-      return new Response(JSON.stringify({ error: 'Server configuration error: API key missing' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Server configuration error: API key missing',
+        userMessage: 'Voice feature is currently unavailable due to configuration issues.'
+      }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -45,7 +48,26 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Eleven Labs API error:', errorData);
-      return new Response(JSON.stringify({ error: 'Failed to generate speech', details: errorData }), {
+      
+      // Handle specific error cases
+      let userMessage = 'Failed to generate speech. Please try again later.';
+      
+      if (errorData.detail?.status === 'detected_unusual_activity') {
+        userMessage = 'Voice feature is temporarily unavailable. The service has detected unusual activity and requires a paid subscription to continue.';
+      } else if (response.status === 401) {
+        userMessage = 'Voice feature is unavailable due to authentication issues.';
+      } else if (response.status === 429) {
+        userMessage = 'Voice feature is temporarily unavailable due to rate limiting. Please try again later.';
+      } else if (response.status >= 500) {
+        userMessage = 'Voice service is temporarily down. Please try again later.';
+      }
+
+      return new Response(JSON.stringify({ 
+        error: 'Failed to generate speech', 
+        details: errorData,
+        userMessage: userMessage,
+        isServiceUnavailable: errorData.detail?.status === 'detected_unusual_activity' || response.status === 401
+      }), {
         status: response.status,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -61,7 +83,10 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Error in Eleven Labs API route:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      userMessage: 'Voice feature is currently unavailable. Please try again later.'
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
