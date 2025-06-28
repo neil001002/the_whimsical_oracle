@@ -320,7 +320,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       ], { type: 'audio/mpeg' });
       
       const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+      const audio = new window.Audio(audioUrl);
       
       return new Promise<void>((resolve, reject) => {
         audio.onended = () => {
