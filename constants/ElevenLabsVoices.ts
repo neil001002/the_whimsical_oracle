@@ -1,5 +1,5 @@
 export const ELEVEN_LABS_VOICE_MAP: { [key: string]: string } = {
-  'wise, ancient, mystical': '21m00Tcm4TlvDq8ikWAM', // Rachel - wise and clear
+  'wise, ancient, mystical': 'WIqAiYIHMGzhIFSl05hm', // Rachel - wise and clear
   'scholarly, quirky, reference-rich': 'EXAVITQu4vr4xnSDxMaL', // Bella - scholarly and articulate
   'playful, optimistic, nature-loving': 'D38z5RcWu1voky8WS1cZ', // Antoni - warm and friendly
   'mysterious, cryptic, mineral-focused': 'ThT5KcBeYPX3keUQqHPh', // Dorothy - mysterious and deep
