@@ -6,6 +6,7 @@ module.exports = {
   icon: "./assets/images/icon.png",
   scheme: "whimsical-oracle",
   userInterfaceStyle: "automatic",
+  newArchEnabled: true,
   splash: {
     image: "./assets/images/splash.png",
     resizeMode: "contain",
