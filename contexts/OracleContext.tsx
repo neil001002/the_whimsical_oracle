@@ -140,6 +140,12 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
   const initializeLiveKit = async () => {
     try {
+      // Only initialize LiveKit on supported platforms
+      if (Platform.OS === 'web') {
+        console.log('LiveKit voice chat not supported on web platform');
+        return;
+      }
+
       liveKitServiceRef.current = getLiveKitService();
       
       // Set up event handlers
@@ -162,6 +168,9 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Failed to initialize LiveKit:', error);
       setVoiceChatError('Failed to initialize voice chat service');
+      
+      // If LiveKit fails to initialize, default to Eleven Labs
+      setUserPreferences(prev => ({ ...prev, voiceProvider: 'elevenlabs' }));
     }
   };
 
@@ -245,7 +254,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
   const playOmenVoiceWithLiveKit = async (text: string, personaVoiceStyle: string) => {
     if (!liveKitServiceRef.current) {
-      throw new Error('LiveKit service not initialized');
+      throw new Error('LiveKit service not available on this platform');
     }
 
     try {
@@ -284,6 +293,13 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
     if (!response.ok) {
       const errorData = await response.json();
+      
+      // Handle service unavailable errors more gracefully
+      if (errorData.isServiceUnavailable) {
+        setIsVoiceServiceAvailable(false);
+        throw new Error('Voice service is currently unavailable. Please check your subscription status or try again later.');
+      }
+      
       throw new Error(errorData.userMessage || 'Failed to generate speech');
     }
 
@@ -356,31 +372,27 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsPlayingVoice(true);
       
-      if (userPreferences.voiceProvider === 'livekit') {
-        await playOmenVoiceWithLiveKit(text, personaVoiceStyle);
-      } else {
-        await playOmenVoiceWithElevenLabs(text, personaVoiceStyle);
+      // Try primary voice provider
+      if (userPreferences.voiceProvider === 'livekit' && Platform.OS !== 'web') {
+        try {
+          await playOmenVoiceWithLiveKit(text, personaVoiceStyle);
+          setIsVoiceServiceAvailable(true);
+          return;
+        } catch (liveKitError) {
+          console.log('LiveKit failed, trying Eleven Labs as fallback...', liveKitError);
+          // Continue to fallback
+        }
       }
       
-      // Reset service availability on successful response
+      // Use Eleven Labs (either as primary or fallback)
+      await playOmenVoiceWithElevenLabs(text, personaVoiceStyle);
       setIsVoiceServiceAvailable(true);
+      
     } catch (error) {
       console.error('Error playing omen voice:', error);
       setVoiceError(`Voice playback failed: ${error}`);
       setIsPlayingVoice(false);
-      
-      // Try fallback provider if primary fails
-      if (userPreferences.voiceProvider === 'livekit') {
-        console.log('Trying Eleven Labs as fallback...');
-        try {
-          await playOmenVoiceWithElevenLabs(text, personaVoiceStyle);
-          setVoiceError(null);
-        } catch (fallbackError) {
-          console.error('Fallback also failed:', fallbackError);
-          setVoiceError('All voice services are currently unavailable');
-          setIsVoiceServiceAvailable(false);
-        }
-      }
+      setIsVoiceServiceAvailable(false);
     }
   };
 
@@ -404,7 +416,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
   // LiveKit voice chat methods
   const connectToVoiceChat = async () => {
-    if (!liveKitServiceRef.current || !userPreferences.realTimeChatEnabled) {
+    if (!liveKitServiceRef.current || !userPreferences.realTimeChatEnabled || Platform.OS === 'web') {
+      setVoiceChatError('Voice chat not available on this platform');
       return;
     }
 
@@ -435,6 +448,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
   const startVoiceRecording = async () => {
     if (!liveKitServiceRef.current || !isVoiceChatConnected) {
+      setVoiceChatError('Voice chat not connected');
       return;
     }
 

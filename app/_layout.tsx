@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
   Cinzel_400Regular,
@@ -14,6 +15,16 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { OracleProvider } from '@/contexts/OracleContext';
+
+// Register WebRTC globals for LiveKit on React Native platforms
+if (Platform.OS !== 'web') {
+  try {
+    const { registerGlobals } = require('@livekit/react-native-webrtc');
+    registerGlobals();
+  } catch (error) {
+    console.warn('Failed to register WebRTC globals:', error);
+  }
+}
 
 SplashScreen.preventAutoHideAsync();
 
