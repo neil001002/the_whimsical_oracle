@@ -1,5 +1,26 @@
-import { Room, RoomEvent, Track, RemoteTrack, RemoteAudioTrack, LocalAudioTrack, AudioCaptureOptions } from 'livekit-client';
 import { Platform } from 'react-native';
+
+// Check if WebRTC is available
+const isWebRTCAvailable = (): boolean => {
+  if (Platform.OS === 'web') {
+    return false; // LiveKit voice chat not supported on web
+  }
+  
+  try {
+    // Check if we're in a custom development build
+    const isCustomBuild = !__DEV__ || (typeof expo === 'undefined' || !expo?.modules?.ExpoGo);
+    if (!isCustomBuild) {
+      return false; // Not available in Expo Go
+    }
+    
+    // Try to import LiveKit to check if it's available
+    require('livekit-client');
+    return true;
+  } catch (error) {
+    console.warn('LiveKit not available:', error.message);
+    return false;
+  }
+};
 
 export interface LiveKitConfig {
   url: string;
@@ -10,7 +31,7 @@ export interface LiveKitConfig {
 export interface VoiceSession {
   roomName: string;
   participantName: string;
-  room: Room;
+  room: any; // Use any to avoid import issues when LiveKit isn't available
   isConnected: boolean;
   isRecording: boolean;
   isPlaying: boolean;
@@ -22,13 +43,28 @@ export class LiveKitVoiceService {
   private onAudioReceived?: (audioData: ArrayBuffer) => void;
   private onConnectionStateChanged?: (connected: boolean) => void;
   private onError?: (error: string) => void;
+  private isAvailable: boolean;
 
   constructor(config: LiveKitConfig) {
     this.config = config;
+    this.isAvailable = isWebRTCAvailable();
+    
+    if (!this.isAvailable) {
+      console.log('LiveKit service initialized but WebRTC is not available');
+    }
+  }
+
+  // Check if LiveKit is available
+  isServiceAvailable(): boolean {
+    return this.isAvailable;
   }
 
   // Generate access token for LiveKit room
   private async generateAccessToken(roomName: string, participantName: string): Promise<string> {
+    if (!this.isAvailable) {
+      throw new Error('LiveKit service is not available on this platform');
+    }
+
     try {
       const response = await fetch('/api/livekit-token', {
         method: 'POST',
@@ -56,7 +92,14 @@ export class LiveKitVoiceService {
 
   // Connect to LiveKit room for voice session
   async connectToVoiceSession(roomName: string, participantName: string): Promise<VoiceSession> {
+    if (!this.isAvailable) {
+      throw new Error('LiveKit service is not available. Please use a custom development build to enable voice chat features.');
+    }
+
     try {
+      // Dynamically import LiveKit only when needed and available
+      const { Room, RoomEvent, Track } = require('livekit-client');
+
       if (this.currentSession?.isConnected) {
         await this.disconnectVoiceSession();
       }
@@ -88,9 +131,8 @@ export class LiveKitVoiceService {
         this.onConnectionStateChanged?.(false);
       });
 
-      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
+      room.on(RoomEvent.TrackSubscribed, (track: any) => {
         if (track.kind === Track.Kind.Audio) {
-          const audioTrack = track as RemoteAudioTrack;
           console.log('Audio track subscribed');
           
           // Handle received audio for real-time processing
@@ -102,7 +144,7 @@ export class LiveKitVoiceService {
         }
       });
 
-      room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+      room.on(RoomEvent.ConnectionQualityChanged, (quality: any, participant: any) => {
         console.log('Connection quality changed:', quality, participant?.identity);
       });
 
@@ -129,17 +171,15 @@ export class LiveKitVoiceService {
 
   // Start recording audio
   async startRecording(): Promise<void> {
+    if (!this.isAvailable) {
+      throw new Error('LiveKit service is not available');
+    }
+
     if (!this.currentSession?.isConnected) {
       throw new Error('Not connected to voice session');
     }
 
     try {
-      const audioOptions: AudioCaptureOptions = {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      };
-
       await this.currentSession.room.localParticipant.enableCameraAndMicrophone();
       this.currentSession.isRecording = true;
       console.log('Started recording audio');
@@ -152,7 +192,7 @@ export class LiveKitVoiceService {
 
   // Stop recording audio
   async stopRecording(): Promise<void> {
-    if (!this.currentSession?.isConnected) {
+    if (!this.isAvailable || !this.currentSession?.isConnected) {
       return;
     }
 
@@ -168,6 +208,10 @@ export class LiveKitVoiceService {
 
   // Text-to-speech using LiveKit's audio publishing
   async speakText(text: string, voiceConfig?: { rate?: number; pitch?: number; volume?: number }): Promise<void> {
+    if (!this.isAvailable) {
+      throw new Error('LiveKit service is not available');
+    }
+
     if (!this.currentSession?.isConnected) {
       throw new Error('Not connected to voice session');
     }

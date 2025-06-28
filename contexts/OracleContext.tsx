@@ -73,6 +73,7 @@ interface OracleContextType {
   isVoiceChatConnected: boolean;
   isVoiceRecording: boolean;
   voiceChatError: string | null;
+  isLiveKitAvailable: boolean;
 }
 
 const OracleContext = createContext<OracleContextType | undefined>(undefined);
@@ -85,7 +86,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     soundEnabled: true,
     hapticsEnabled: true,
     voiceEnabled: true,
-    voiceProvider: 'livekit', // Default to LiveKit
+    voiceProvider: 'elevenlabs', // Default to Eleven Labs since it's more reliable
     realTimeChatEnabled: true,
   });
   const [omenHistory, setOmenHistory] = useState<WhimsicalOmen[]>([]);
@@ -98,6 +99,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   const [isVoiceChatConnected, setIsVoiceChatConnected] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [voiceChatError, setVoiceChatError] = useState<string | null>(null);
+  const [isLiveKitAvailable, setIsLiveKitAvailable] = useState(false);
   
   const soundObjectRef = useRef<Audio.Sound | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -140,14 +142,16 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
   const initializeLiveKit = async () => {
     try {
-      // Only initialize LiveKit on supported platforms
-      if (Platform.OS === 'web') {
-        console.log('LiveKit voice chat not supported on web platform');
+      liveKitServiceRef.current = getLiveKitService();
+      const available = liveKitServiceRef.current.isServiceAvailable();
+      setIsLiveKitAvailable(available);
+      
+      if (!available) {
+        console.log('LiveKit voice chat not available on this platform or build configuration');
+        setVoiceChatError('Voice chat requires a custom development build. LiveKit features are disabled.');
         return;
       }
 
-      liveKitServiceRef.current = getLiveKitService();
-      
       // Set up event handlers
       liveKitServiceRef.current.setEventHandlers({
         onConnectionStateChanged: (connected) => {
@@ -168,8 +172,9 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Failed to initialize LiveKit:', error);
       setVoiceChatError('Failed to initialize voice chat service');
+      setIsLiveKitAvailable(false);
       
-      // If LiveKit fails to initialize, default to Eleven Labs
+      // If LiveKit fails to initialize, ensure Eleven Labs is the default
       setUserPreferences(prev => ({ ...prev, voiceProvider: 'elevenlabs' }));
     }
   };
@@ -183,10 +188,10 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
       if (prefsData) {
         const prefs = JSON.parse(prefsData);
-        // Ensure new properties have defaults
+        // Ensure new properties have defaults and prefer Eleven Labs
         const updatedPrefs = {
           ...prefs,
-          voiceProvider: prefs.voiceProvider || 'livekit',
+          voiceProvider: prefs.voiceProvider || 'elevenlabs',
           realTimeChatEnabled: prefs.realTimeChatEnabled !== undefined ? prefs.realTimeChatEnabled : true,
         };
         setUserPreferences(updatedPrefs);
@@ -230,7 +235,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsPlayingVoice(false);
       
-      if (userPreferences.voiceProvider === 'livekit' && liveKitServiceRef.current) {
+      if (userPreferences.voiceProvider === 'livekit' && liveKitServiceRef.current && isLiveKitAvailable) {
         await liveKitServiceRef.current.stopSpeaking();
       } else {
         // Eleven Labs fallback
@@ -253,7 +258,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const playOmenVoiceWithLiveKit = async (text: string, personaVoiceStyle: string) => {
-    if (!liveKitServiceRef.current) {
+    if (!liveKitServiceRef.current || !isLiveKitAvailable) {
       throw new Error('LiveKit service not available on this platform');
     }
 
@@ -297,7 +302,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       // Handle service unavailable errors more gracefully
       if (errorData.isServiceUnavailable) {
         setIsVoiceServiceAvailable(false);
-        throw new Error('Voice service is currently unavailable. Please check your subscription status or try again later.');
+        throw new Error('Voice service is currently unavailable due to API limitations. This is typically due to free tier restrictions or unusual activity detection. Consider upgrading to a paid plan or try again later.');
       }
       
       throw new Error(errorData.userMessage || 'Failed to generate speech');
@@ -372,8 +377,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsPlayingVoice(true);
       
-      // Try primary voice provider
-      if (userPreferences.voiceProvider === 'livekit' && Platform.OS !== 'web') {
+      // Try primary voice provider only if it's available
+      if (userPreferences.voiceProvider === 'livekit' && isLiveKitAvailable && Platform.OS !== 'web') {
         try {
           await playOmenVoiceWithLiveKit(text, personaVoiceStyle);
           setIsVoiceServiceAvailable(true);
@@ -390,9 +395,14 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       
     } catch (error) {
       console.error('Error playing omen voice:', error);
-      setVoiceError(`Voice playback failed: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setVoiceError(`Voice playback failed: ${errorMessage}`);
       setIsPlayingVoice(false);
-      setIsVoiceServiceAvailable(false);
+      
+      // Only mark service as unavailable for specific API errors
+      if (errorMessage.includes('API limitations') || errorMessage.includes('unusual activity')) {
+        setIsVoiceServiceAvailable(false);
+      }
     }
   };
 
@@ -416,8 +426,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
   // LiveKit voice chat methods
   const connectToVoiceChat = async () => {
-    if (!liveKitServiceRef.current || !userPreferences.realTimeChatEnabled || Platform.OS === 'web') {
-      setVoiceChatError('Voice chat not available on this platform');
+    if (!liveKitServiceRef.current || !userPreferences.realTimeChatEnabled || !isLiveKitAvailable) {
+      setVoiceChatError('Voice chat not available. Requires custom development build with WebRTC support.');
       return;
     }
 
@@ -429,7 +439,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       await liveKitServiceRef.current.connectToVoiceSession(roomName, participantName);
     } catch (error) {
       console.error('Error connecting to voice chat:', error);
-      setVoiceChatError(`Failed to connect to voice chat: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setVoiceChatError(`Failed to connect to voice chat: ${errorMessage}`);
     }
   };
 
@@ -447,8 +458,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const startVoiceRecording = async () => {
-    if (!liveKitServiceRef.current || !isVoiceChatConnected) {
-      setVoiceChatError('Voice chat not connected');
+    if (!liveKitServiceRef.current || !isVoiceChatConnected || !isLiveKitAvailable) {
+      setVoiceChatError('Voice chat not connected or not available');
       return;
     }
 
@@ -457,7 +468,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       setIsVoiceRecording(true);
     } catch (error) {
       console.error('Error starting voice recording:', error);
-      setVoiceChatError(`Failed to start recording: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setVoiceChatError(`Failed to start recording: ${errorMessage}`);
     }
   };
 
@@ -484,7 +496,12 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       const persona = ORACLE_PERSONAS.find(p => p.id === omen.persona);
       if (persona) {
         const fullText = `${omen.crypticPhrase}. ${omen.interpretation}. ${omen.advice}`;
-        await playOmenVoice(fullText, persona.voiceStyle);
+        try {
+          await playOmenVoice(fullText, persona.voiceStyle);
+        } catch (error) {
+          // Don't throw error for voice playback failures, just log them
+          console.log('Voice playback failed for new omen:', error);
+        }
       }
     }
   };
@@ -520,6 +537,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       isVoiceChatConnected,
       isVoiceRecording,
       voiceChatError,
+      isLiveKitAvailable,
     }}>
       {children}
     </OracleContext.Provider>

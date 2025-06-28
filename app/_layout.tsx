@@ -16,13 +16,22 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { OracleProvider } from '@/contexts/OracleContext';
 
-// Register WebRTC globals for LiveKit on React Native platforms
+// Only register WebRTC globals on supported platforms and when available
 if (Platform.OS !== 'web') {
   try {
-    const { registerGlobals } = require('@livekit/react-native-webrtc');
-    registerGlobals();
+    // Check if we're running in a custom development build (not Expo Go)
+    const isCustomBuild = !__DEV__ || (typeof expo === 'undefined' || !expo?.modules?.ExpoGo);
+    
+    if (isCustomBuild) {
+      const { registerGlobals } = require('@livekit/react-native-webrtc');
+      registerGlobals();
+      console.log('WebRTC globals registered successfully');
+    } else {
+      console.log('WebRTC not available in Expo Go - LiveKit features will be disabled');
+    }
   } catch (error) {
-    console.warn('Failed to register WebRTC globals:', error);
+    console.warn('Failed to register WebRTC globals:', error.message);
+    console.log('LiveKit voice features will be disabled. To enable them, create a custom development build.');
   }
 }
 
