@@ -16,7 +16,9 @@ import {
   Crown, 
   Palette,
   ChevronRight,
-  Mic
+  Mic,
+  MessageCircle,
+  Settings as SettingsIcon
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
@@ -34,7 +36,14 @@ export default function SettingsScreen() {
     updatePreferences,
     playOmenVoice,
     stopVoice,
-    isPlayingVoice
+    isPlayingVoice,
+    voiceError,
+    isVoiceServiceAvailable,
+    // LiveKit methods
+    connectToVoiceChat,
+    disconnectFromVoiceChat,
+    isVoiceChatConnected,
+    voiceChatError
   } = useOracle();
 
   const testVoice = async () => {
@@ -43,6 +52,14 @@ export default function SettingsScreen() {
     } else {
       const testText = "Greetings, seeker. This is how your chosen oracle sounds when speaking mystical wisdom.";
       await playOmenVoice(testText, selectedPersona.voiceStyle);
+    }
+  };
+
+  const toggleVoiceChat = async () => {
+    if (isVoiceChatConnected) {
+      await disconnectFromVoiceChat();
+    } else {
+      await connectToVoiceChat();
     }
   };
 
@@ -77,6 +94,126 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         ))}
       </View>
+    </MysticalCard>
+  );
+
+  const renderVoiceSettings = () => (
+    <MysticalCard style={styles.sectionCard}>
+      <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
+        Voice & Communication
+      </Text>
+      
+      <View style={styles.preferenceItem}>
+        <View style={styles.preferenceLeft}>
+          <Mic color={colors.accent} size={20} />
+          <View style={styles.preferenceText}>
+            <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
+              Voice Narration
+            </Text>
+            <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+              Spoken oracle wisdom
+            </Text>
+          </View>
+        </View>
+        <Switch
+          value={userPreferences.voiceEnabled}
+          onValueChange={(value) => updatePreferences({ voiceEnabled: value })}
+          trackColor={{ false: colors.surface, true: colors.accent }}
+          thumbColor={colors.text}
+        />
+      </View>
+
+      <View style={styles.preferenceItem}>
+        <View style={styles.preferenceLeft}>
+          <MessageCircle color={colors.accent} size={20} />
+          <View style={styles.preferenceText}>
+            <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
+              Real-time Voice Chat
+            </Text>
+            <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+              Interactive voice conversations
+            </Text>
+          </View>
+        </View>
+        <Switch
+          value={userPreferences.realTimeChatEnabled}
+          onValueChange={(value) => updatePreferences({ realTimeChatEnabled: value })}
+          trackColor={{ false: colors.surface, true: colors.accent }}
+          thumbColor={colors.text}
+        />
+      </View>
+
+      <View style={styles.preferenceItem}>
+        <View style={styles.preferenceLeft}>
+          <SettingsIcon color={colors.accent} size={20} />
+          <View style={styles.preferenceText}>
+            <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
+              Voice Provider
+            </Text>
+            <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+              {userPreferences.voiceProvider === 'livekit' ? 'LiveKit (Primary)' : 'Eleven Labs'}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          onPress={() => updatePreferences({ 
+            voiceProvider: userPreferences.voiceProvider === 'livekit' ? 'elevenlabs' : 'livekit' 
+          })}
+          style={[styles.providerButton, { borderColor: colors.accent }]}
+        >
+          <Text style={[styles.providerButtonText, { color: colors.accent, fontFamily: fonts.body }]}>
+            Switch
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {userPreferences.voiceEnabled && (
+        <View style={styles.voiceTestContainer}>
+          <MagicalButton
+            title={isPlayingVoice ? "Stop Voice Test" : "Test Voice"}
+            onPress={testVoice}
+            variant="secondary"
+            size="small"
+          />
+          <Text style={[styles.voiceTestNote, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+            Test how your selected oracle sounds
+          </Text>
+        </View>
+      )}
+
+      {userPreferences.realTimeChatEnabled && (
+        <View style={styles.voiceChatContainer}>
+          <MagicalButton
+            title={isVoiceChatConnected ? "Disconnect Voice Chat" : "Connect Voice Chat"}
+            onPress={toggleVoiceChat}
+            variant={isVoiceChatConnected ? "secondary" : "primary"}
+            size="small"
+          />
+          {isVoiceChatConnected && (
+            <View style={styles.voiceChatStatus}>
+              <Text style={[styles.voiceChatStatusText, { color: colors.accent, fontFamily: fonts.body }]}>
+                🎙️ Voice chat connected
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {(voiceError || voiceChatError) && (
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.body }]}>
+            {voiceError || voiceChatError}
+          </Text>
+        </View>
+      )}
+
+      {!isVoiceServiceAvailable && (
+        <View style={styles.warningContainer}>
+          <Text style={[styles.warningText, { color: colors.warning, fontFamily: fonts.body }]}>
+            ⚠️ Voice services are currently limited. Some features may be unavailable.
+          </Text>
+        </View>
+      )}
     </MysticalCard>
   );
 
@@ -125,40 +262,6 @@ export default function SettingsScreen() {
           thumbColor={colors.text}
         />
       </View>
-
-      <View style={styles.preferenceItem}>
-        <View style={styles.preferenceLeft}>
-          <Mic color={colors.accent} size={20} />
-          <View style={styles.preferenceText}>
-            <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
-              Voice Narration
-            </Text>
-            <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Spoken oracle wisdom
-            </Text>
-          </View>
-        </View>
-        <Switch
-          value={userPreferences.voiceEnabled}
-          onValueChange={(value) => updatePreferences({ voiceEnabled: value })}
-          trackColor={{ false: colors.surface, true: colors.accent }}
-          thumbColor={colors.text}
-        />
-      </View>
-
-      {userPreferences.voiceEnabled && (
-        <View style={styles.voiceTestContainer}>
-          <MagicalButton
-            title={isPlayingVoice ? "Stop Voice Test" : "Test Voice"}
-            onPress={testVoice}
-            variant="secondary"
-            size="small"
-          />
-          <Text style={[styles.voiceTestNote, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            Test how your selected oracle sounds
-          </Text>
-        </View>
-      )}
     </MysticalCard>
   );
 
@@ -217,6 +320,7 @@ export default function SettingsScreen() {
           showsVerticalScrollIndicator={false}
         >
           {renderPersonaSelector()}
+          {renderVoiceSettings()}
           {renderPreferences()}
           {renderSubscription()}
         </ScrollView>
@@ -307,6 +411,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.7,
   },
+  providerButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  providerButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   voiceTestContainer: {
     alignItems: 'center',
     marginTop: 16,
@@ -317,6 +431,46 @@ const styles = StyleSheet.create({
   voiceTestNote: {
     fontSize: 12,
     marginTop: 8,
+    textAlign: 'center',
+  },
+  voiceChatContainer: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  voiceChatStatus: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  voiceChatStatusText: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  errorText: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  warningContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  warningText: {
+    fontSize: 12,
     textAlign: 'center',
   },
   subscriptionHeader: {

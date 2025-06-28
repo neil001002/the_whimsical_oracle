@@ -15,6 +15,7 @@ import { useOracle } from '@/contexts/OracleContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
+import { VoiceChatButton } from '@/components/ui/VoiceChatButton';
 import { WhimsicalOmen, OmenCategory } from '@/types';
 
 const { width } = Dimensions.get('window');
@@ -27,7 +28,9 @@ export default function HomeScreen() {
     addOmen, 
     playOmenVoice, 
     stopVoice, 
-    isPlayingVoice 
+    isPlayingVoice,
+    voiceError,
+    isVoiceServiceAvailable
   } = useOracle();
   const [currentOmen, setCurrentOmen] = useState<WhimsicalOmen | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -134,6 +137,13 @@ export default function HomeScreen() {
             </View>
           </MysticalCard>
 
+          {/* Voice Chat Button */}
+          {userPreferences.realTimeChatEnabled && (
+            <View style={styles.voiceChatContainer}>
+              <VoiceChatButton />
+            </View>
+          )}
+
           {/* Omen Display or Generation */}
           {currentOmen ? (
             <MysticalCard style={styles.omenCard}>
@@ -142,7 +152,7 @@ export default function HomeScreen() {
                   <Text style={[styles.omenSymbol, { fontSize: 48 }]}>
                     {currentOmen.symbol}
                   </Text>
-                  {userPreferences.voiceEnabled && (
+                  {userPreferences.voiceEnabled && isVoiceServiceAvailable && (
                     <TouchableOpacity
                       onPress={handleVoiceToggle}
                       style={[styles.voiceButton, { borderColor: colors.accent }]}
@@ -173,6 +183,13 @@ export default function HomeScreen() {
                   <View style={styles.playingIndicator}>
                     <Text style={[styles.playingText, { color: colors.accent, fontFamily: fonts.body }]}>
                       🎵 Oracle speaking...
+                    </Text>
+                  </View>
+                )}
+                {voiceError && (
+                  <View style={styles.errorIndicator}>
+                    <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.body }]}>
+                      {voiceError}
                     </Text>
                   </View>
                 )}
@@ -258,6 +275,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.8,
   },
+  voiceChatContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   omenCard: {
     marginBottom: 32,
     minHeight: 280,
@@ -321,6 +342,18 @@ const styles = StyleSheet.create({
   },
   playingText: {
     fontSize: 14,
+    textAlign: 'center',
+  },
+  errorIndicator: {
+    padding: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 12,
     textAlign: 'center',
   },
   emptyOmenContent: {

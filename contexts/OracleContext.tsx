@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { ELEVEN_LABS_VOICE_MAP } from '@/constants/ElevenLabsVoices';
+import { getLiveKitService, LiveKitVoiceService } from '@/services/LiveKitService';
 
 interface OraclePersona {
   id: string;
@@ -46,6 +47,8 @@ interface UserPreferences {
   soundEnabled: boolean;
   hapticsEnabled: boolean;
   voiceEnabled: boolean;
+  voiceProvider: 'livekit' | 'elevenlabs';
+  realTimeChatEnabled: boolean;
 }
 
 interface OracleContextType {
@@ -62,6 +65,14 @@ interface OracleContextType {
   isPlayingVoice: boolean;
   voiceError: string | null;
   isVoiceServiceAvailable: boolean;
+  // LiveKit specific methods
+  connectToVoiceChat: () => Promise<void>;
+  disconnectFromVoiceChat: () => Promise<void>;
+  startVoiceRecording: () => Promise<void>;
+  stopVoiceRecording: () => Promise<void>;
+  isVoiceChatConnected: boolean;
+  isVoiceRecording: boolean;
+  voiceChatError: string | null;
 }
 
 const OracleContext = createContext<OracleContextType | undefined>(undefined);
@@ -73,18 +84,28 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     subscriptionTier: 'free',
     soundEnabled: true,
     hapticsEnabled: true,
-    voiceEnabled: false,
+    voiceEnabled: true,
+    voiceProvider: 'livekit', // Default to LiveKit
+    realTimeChatEnabled: true,
   });
   const [omenHistory, setOmenHistory] = useState<WhimsicalOmen[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [isVoiceServiceAvailable, setIsVoiceServiceAvailable] = useState(true);
+  
+  // LiveKit specific state
+  const [isVoiceChatConnected, setIsVoiceChatConnected] = useState(false);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [voiceChatError, setVoiceChatError] = useState<string | null>(null);
+  
   const soundObjectRef = useRef<Audio.Sound | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const liveKitServiceRef = useRef<LiveKitVoiceService | null>(null);
 
   useEffect(() => {
     loadUserData();
+    initializeLiveKit();
     
     // Configure audio for mobile platforms
     if (Platform.OS !== 'web') {
@@ -109,8 +130,40 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
           soundObjectRef.current.unloadAsync();
         }
       }
+      
+      // Cleanup LiveKit
+      if (liveKitServiceRef.current) {
+        liveKitServiceRef.current.disconnectVoiceSession();
+      }
     };
   }, []);
+
+  const initializeLiveKit = async () => {
+    try {
+      liveKitServiceRef.current = getLiveKitService();
+      
+      // Set up event handlers
+      liveKitServiceRef.current.setEventHandlers({
+        onConnectionStateChanged: (connected) => {
+          setIsVoiceChatConnected(connected);
+          if (!connected) {
+            setIsVoiceRecording(false);
+          }
+        },
+        onError: (error) => {
+          setVoiceChatError(error);
+          console.error('LiveKit error:', error);
+        },
+        onAudioReceived: (audioData) => {
+          // Handle received audio data for real-time chat
+          console.log('Received audio data:', audioData.byteLength);
+        },
+      });
+    } catch (error) {
+      console.error('Failed to initialize LiveKit:', error);
+      setVoiceChatError('Failed to initialize voice chat service');
+    }
+  };
 
   const loadUserData = async () => {
     try {
@@ -121,8 +174,14 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
       if (prefsData) {
         const prefs = JSON.parse(prefsData);
-        setUserPreferences(prefs);
-        const persona = ORACLE_PERSONAS.find(p => p.id === prefs.selectedPersona);
+        // Ensure new properties have defaults
+        const updatedPrefs = {
+          ...prefs,
+          voiceProvider: prefs.voiceProvider || 'livekit',
+          realTimeChatEnabled: prefs.realTimeChatEnabled !== undefined ? prefs.realTimeChatEnabled : true,
+        };
+        setUserPreferences(updatedPrefs);
+        const persona = ORACLE_PERSONAS.find(p => p.id === updatedPrefs.selectedPersona);
         if (persona) {
           setSelectedPersona(persona);
         }
@@ -162,20 +221,124 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsPlayingVoice(false);
       
-      if (Platform.OS === 'web') {
-        if (audioElementRef.current) {
-          audioElementRef.current.pause();
-          audioElementRef.current = null;
-        }
+      if (userPreferences.voiceProvider === 'livekit' && liveKitServiceRef.current) {
+        await liveKitServiceRef.current.stopSpeaking();
       } else {
-        if (soundObjectRef.current) {
-          await soundObjectRef.current.stopAsync();
-          await soundObjectRef.current.unloadAsync();
-          soundObjectRef.current = null;
+        // Eleven Labs fallback
+        if (Platform.OS === 'web') {
+          if (audioElementRef.current) {
+            audioElementRef.current.pause();
+            audioElementRef.current = null;
+          }
+        } else {
+          if (soundObjectRef.current) {
+            await soundObjectRef.current.stopAsync();
+            await soundObjectRef.current.unloadAsync();
+            soundObjectRef.current = null;
+          }
         }
       }
     } catch (error) {
       console.error('Error stopping voice:', error);
+    }
+  };
+
+  const playOmenVoiceWithLiveKit = async (text: string, personaVoiceStyle: string) => {
+    if (!liveKitServiceRef.current) {
+      throw new Error('LiveKit service not initialized');
+    }
+
+    try {
+      // Configure voice based on persona
+      const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
+      
+      // If not connected to a voice session, create a temporary one for TTS
+      const status = liveKitServiceRef.current.getSessionStatus();
+      if (!status.isConnected) {
+        const roomName = `oracle-tts-${Date.now()}`;
+        const participantName = `oracle-${selectedPersona.id}`;
+        await liveKitServiceRef.current.connectToVoiceSession(roomName, participantName);
+      }
+
+      await liveKitServiceRef.current.speakText(text, voiceConfig);
+    } catch (error) {
+      console.error('Error with LiveKit TTS:', error);
+      throw error;
+    }
+  };
+
+  const playOmenVoiceWithElevenLabs = async (text: string, personaVoiceStyle: string) => {
+    const voiceId = ELEVEN_LABS_VOICE_MAP[personaVoiceStyle];
+    if (!voiceId) {
+      throw new Error(`No Eleven Labs voice ID found for persona voice style: ${personaVoiceStyle}`);
+    }
+
+    // Call the API route
+    const response = await fetch('/api/elevenlabs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text, voiceId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.userMessage || 'Failed to generate speech');
+    }
+
+    const { audio: base64Audio } = await response.json();
+    if (!base64Audio) {
+      throw new Error('No audio data received');
+    }
+
+    // Platform-specific audio playback
+    if (Platform.OS === 'web') {
+      const audioBlob = new Blob([
+        Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0))
+      ], { type: 'audio/mpeg' });
+      
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      return new Promise<void>((resolve, reject) => {
+        audio.onended = () => {
+          setIsPlayingVoice(false);
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
+        
+        audio.onerror = () => {
+          setIsPlayingVoice(false);
+          URL.revokeObjectURL(audioUrl);
+          reject(new Error('Failed to play audio'));
+        };
+        
+        audioElementRef.current = audio;
+        audio.play().catch(reject);
+      });
+    } else {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:audio/mpeg;base64,${base64Audio}` },
+        { shouldPlay: true }
+      );
+      
+      soundObjectRef.current = sound;
+      
+      return new Promise<void>((resolve, reject) => {
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setIsPlayingVoice(false);
+            resolve();
+          }
+          if (status.isLoaded && status.error) {
+            setIsPlayingVoice(false);
+            reject(new Error('Audio playback error'));
+          }
+        });
+        
+        sound.playAsync().catch(reject);
+      });
     }
   };
 
@@ -193,95 +356,107 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsPlayingVoice(true);
       
-      const voiceId = ELEVEN_LABS_VOICE_MAP[personaVoiceStyle];
-      if (!voiceId) {
-        console.warn(`No Eleven Labs voice ID found for persona voice style: ${personaVoiceStyle}`);
-        setVoiceError('Voice configuration not found for this persona.');
-        setIsPlayingVoice(false);
-        return;
+      if (userPreferences.voiceProvider === 'livekit') {
+        await playOmenVoiceWithLiveKit(text, personaVoiceStyle);
+      } else {
+        await playOmenVoiceWithElevenLabs(text, personaVoiceStyle);
       }
-
-      // Call the API route
-      const response = await fetch('/api/elevenlabs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text, voiceId }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Failed to fetch audio from API route:', errorData);
-        
-        // Set user-friendly error message
-        const userMessage = errorData.userMessage || 'Voice feature is currently unavailable.';
-        setVoiceError(userMessage);
-        
-        // Update service availability status
-        if (errorData.isServiceUnavailable) {
-          setIsVoiceServiceAvailable(false);
-        }
-        
-        setIsPlayingVoice(false);
-        return;
-      }
-
-      const { audio: base64Audio } = await response.json();
-      if (!base64Audio) {
-        console.error('No audio data received from API route.');
-        setVoiceError('No audio data received. Please try again.');
-        setIsPlayingVoice(false);
-        return;
-      }
-
+      
       // Reset service availability on successful response
       setIsVoiceServiceAvailable(true);
-
-      // Platform-specific audio playback
-      if (Platform.OS === 'web') {
-        // Web implementation using HTML5 Audio
-        const audioBlob = new Blob([
-          Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0))
-        ], { type: 'audio/mpeg' });
-        
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        
-        audio.onended = () => {
-          setIsPlayingVoice(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        
-        audio.onerror = () => {
-          setIsPlayingVoice(false);
-          setVoiceError('Failed to play audio. Please try again.');
-          URL.revokeObjectURL(audioUrl);
-        };
-        
-        audioElementRef.current = audio;
-        await audio.play();
-      } else {
-        // Mobile implementation using expo-av
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: `data:audio/mpeg;base64,${base64Audio}` },
-          { shouldPlay: true }
-        );
-        
-        soundObjectRef.current = sound;
-        
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setIsPlayingVoice(false);
-          }
-        });
-        
-        await sound.playAsync();
-      }
     } catch (error) {
       console.error('Error playing omen voice:', error);
-      setVoiceError('An unexpected error occurred while playing voice. Please try again.');
+      setVoiceError(`Voice playback failed: ${error}`);
       setIsPlayingVoice(false);
+      
+      // Try fallback provider if primary fails
+      if (userPreferences.voiceProvider === 'livekit') {
+        console.log('Trying Eleven Labs as fallback...');
+        try {
+          await playOmenVoiceWithElevenLabs(text, personaVoiceStyle);
+          setVoiceError(null);
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
+          setVoiceError('All voice services are currently unavailable');
+          setIsVoiceServiceAvailable(false);
+        }
+      }
+    }
+  };
+
+  const getVoiceConfigForPersona = (personaVoiceStyle: string) => {
+    // Configure voice parameters based on persona
+    switch (personaVoiceStyle) {
+      case 'wise, ancient, mystical':
+        return { rate: 0.8, pitch: 0.9, volume: 0.9 };
+      case 'scholarly, quirky, reference-rich':
+        return { rate: 1.1, pitch: 1.0, volume: 0.8 };
+      case 'playful, optimistic, nature-loving':
+        return { rate: 1.2, pitch: 1.1, volume: 0.9 };
+      case 'mysterious, cryptic, mineral-focused':
+        return { rate: 0.9, pitch: 0.8, volume: 0.7 };
+      case 'temporal, mysterious, time-focused':
+        return { rate: 0.85, pitch: 0.95, volume: 0.8 };
+      default:
+        return { rate: 1.0, pitch: 1.0, volume: 0.8 };
+    }
+  };
+
+  // LiveKit voice chat methods
+  const connectToVoiceChat = async () => {
+    if (!liveKitServiceRef.current || !userPreferences.realTimeChatEnabled) {
+      return;
+    }
+
+    try {
+      setVoiceChatError(null);
+      const roomName = `oracle-chat-${selectedPersona.id}`;
+      const participantName = `user-${Date.now()}`;
+      
+      await liveKitServiceRef.current.connectToVoiceSession(roomName, participantName);
+    } catch (error) {
+      console.error('Error connecting to voice chat:', error);
+      setVoiceChatError(`Failed to connect to voice chat: ${error}`);
+    }
+  };
+
+  const disconnectFromVoiceChat = async () => {
+    if (!liveKitServiceRef.current) {
+      return;
+    }
+
+    try {
+      await liveKitServiceRef.current.disconnectVoiceSession();
+      setIsVoiceRecording(false);
+    } catch (error) {
+      console.error('Error disconnecting from voice chat:', error);
+    }
+  };
+
+  const startVoiceRecording = async () => {
+    if (!liveKitServiceRef.current || !isVoiceChatConnected) {
+      return;
+    }
+
+    try {
+      await liveKitServiceRef.current.startRecording();
+      setIsVoiceRecording(true);
+    } catch (error) {
+      console.error('Error starting voice recording:', error);
+      setVoiceChatError(`Failed to start recording: ${error}`);
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    if (!liveKitServiceRef.current) {
+      return;
+    }
+
+    try {
+      await liveKitServiceRef.current.stopRecording();
+      setIsVoiceRecording(false);
+    } catch (error) {
+      console.error('Error stopping voice recording:', error);
     }
   };
 
@@ -323,6 +498,14 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       isPlayingVoice,
       voiceError,
       isVoiceServiceAvailable,
+      // LiveKit methods
+      connectToVoiceChat,
+      disconnectFromVoiceChat,
+      startVoiceRecording,
+      stopVoiceRecording,
+      isVoiceChatConnected,
+      isVoiceRecording,
+      voiceChatError,
     }}>
       {children}
     </OracleContext.Provider>
