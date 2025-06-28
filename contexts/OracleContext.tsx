@@ -150,7 +150,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
         console.log('LiveKit voice chat not available on this platform or build configuration');
         setVoiceChatError('Voice chat requires a custom development build. LiveKit features are disabled.');
         
-        // If LiveKit is not available, fall back to web speech API for TTS
+        // Check if web speech API is available as fallback for TTS
         if (Platform.OS === 'web' && 'speechSynthesis' in window) {
           console.log('Using Web Speech API as fallback for voice features');
           setIsVoiceServiceAvailable(true);
@@ -278,6 +278,44 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const playOmenVoiceWithLiveKit = async (text: string, personaVoiceStyle: string) => {
+    // For web platform, use Web Speech API directly
+    if (Platform.OS === 'web' && 'speechSynthesis' in window) {
+      return new Promise<void>((resolve, reject) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Apply voice configuration
+        const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
+        utterance.rate = voiceConfig.rate;
+        utterance.pitch = voiceConfig.pitch;
+        utterance.volume = voiceConfig.volume;
+        
+        // Try to find a suitable voice
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(voice => 
+          voice.name.toLowerCase().includes('female') || 
+          voice.name.toLowerCase().includes('samantha') ||
+          voice.name.toLowerCase().includes('alex')
+        );
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        utterance.onend = () => {
+          setIsPlayingVoice(false);
+          resolve();
+        };
+
+        utterance.onerror = (event) => {
+          setIsPlayingVoice(false);
+          reject(new Error(`Speech synthesis error: ${event.error}`));
+        };
+
+        setIsPlayingVoice(true);
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+    
+    // For mobile platforms, check if LiveKit is available
     if (!liveKitServiceRef.current || !isLiveKitAvailable) {
       throw new Error('LiveKit service not available on this platform');
     }
@@ -285,42 +323,6 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     try {
       // Configure voice based on persona
       const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
-      
-      // For web platform, use Web Speech API directly
-      if (Platform.OS === 'web' && 'speechSynthesis' in window) {
-        return new Promise<void>((resolve, reject) => {
-          const utterance = new SpeechSynthesisUtterance(text);
-          
-          // Apply voice configuration
-          utterance.rate = voiceConfig.rate;
-          utterance.pitch = voiceConfig.pitch;
-          utterance.volume = voiceConfig.volume;
-          
-          // Try to find a suitable voice
-          const voices = window.speechSynthesis.getVoices();
-          const preferredVoice = voices.find(voice => 
-            voice.name.toLowerCase().includes('female') || 
-            voice.name.toLowerCase().includes('samantha') ||
-            voice.name.toLowerCase().includes('alex')
-          );
-          if (preferredVoice) {
-            utterance.voice = preferredVoice;
-          }
-
-          utterance.onend = () => {
-            setIsPlayingVoice(false);
-            resolve();
-          };
-
-          utterance.onerror = (event) => {
-            setIsPlayingVoice(false);
-            reject(new Error(`Speech synthesis error: ${event.error}`));
-          };
-
-          setIsPlayingVoice(true);
-          window.speechSynthesis.speak(utterance);
-        });
-      }
       
       // For mobile platforms with LiveKit available
       const status = liveKitServiceRef.current.getSessionStatus();
@@ -435,13 +437,13 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       
       // Try LiveKit first if it's the preferred provider and available
       if (userPreferences.voiceProvider === 'livekit') {
-        if (isLiveKitAvailable && Platform.OS !== 'web') {
-          // Use LiveKit for mobile platforms
+        if (Platform.OS === 'web' && 'speechSynthesis' in window) {
+          // Use Web Speech API for web platform
           await playOmenVoiceWithLiveKit(text, personaVoiceStyle);
           setIsVoiceServiceAvailable(true);
           return;
-        } else if (Platform.OS === 'web' && 'speechSynthesis' in window) {
-          // Use Web Speech API for web platform
+        } else if (isLiveKitAvailable && Platform.OS !== 'web') {
+          // Use LiveKit for mobile platforms
           await playOmenVoiceWithLiveKit(text, personaVoiceStyle);
           setIsVoiceServiceAvailable(true);
           return;
