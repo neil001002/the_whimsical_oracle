@@ -39,6 +39,7 @@ export default function SettingsScreen() {
     isPlayingVoice,
     voiceError,
     isVoiceServiceAvailable,
+    isLiveKitAvailable,
     // LiveKit methods
     connectToVoiceChat,
     disconnectFromVoiceChat,
@@ -167,6 +168,43 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Service Status Information */}
+      <View style={styles.serviceStatusContainer}>
+        <Text style={[styles.serviceStatusTitle, { color: colors.text, fontFamily: fonts.body }]}>
+          Service Status:
+        </Text>
+        
+        <View style={styles.serviceStatusItem}>
+          <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+            LiveKit: 
+          </Text>
+          <Text style={[
+            styles.serviceStatusValue, 
+            { 
+              color: isLiveKitAvailable ? colors.success : colors.warning, 
+              fontFamily: fonts.body 
+            }
+          ]}>
+            {isLiveKitAvailable ? 'Available' : 'Requires Custom Build'}
+          </Text>
+        </View>
+        
+        <View style={styles.serviceStatusItem}>
+          <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+            Voice TTS: 
+          </Text>
+          <Text style={[
+            styles.serviceStatusValue, 
+            { 
+              color: isVoiceServiceAvailable ? colors.success : colors.error, 
+              fontFamily: fonts.body 
+            }
+          ]}>
+            {isVoiceServiceAvailable ? 'Available' : 'Limited'}
+          </Text>
+        </View>
+      </View>
+
       {userPreferences.voiceEnabled && (
         <View style={styles.voiceTestContainer}>
           <MagicalButton
@@ -181,7 +219,7 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {userPreferences.realTimeChatEnabled && (
+      {userPreferences.realTimeChatEnabled && isLiveKitAvailable && (
         <View style={styles.voiceChatContainer}>
           <MagicalButton
             title={isVoiceChatConnected ? "Disconnect Voice Chat" : "Connect Voice Chat"}
@@ -207,10 +245,10 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {!isVoiceServiceAvailable && (
+      {!isLiveKitAvailable && userPreferences.realTimeChatEnabled && (
         <View style={styles.warningContainer}>
           <Text style={[styles.warningText, { color: colors.warning, fontFamily: fonts.body }]}>
-            ⚠️ Voice services are currently limited. Some features may be unavailable.
+            ⚠️ Voice chat requires a custom development build with WebRTC support. Currently using fallback voice features.
           </Text>
         </View>
       )}
@@ -418,6 +456,30 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   providerButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  serviceStatusContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  serviceStatusTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  serviceStatusItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  serviceStatusLabel: {
+    fontSize: 12,
+    marginRight: 8,
+  },
+  serviceStatusValue: {
     fontSize: 12,
     fontWeight: '600',
   },
