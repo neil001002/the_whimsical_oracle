@@ -42,7 +42,8 @@ export class LiveKitVoiceService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate access token');
+        const errorData = await response.json();
+        throw new Error(errorData.userMessage || 'Failed to generate access token');
       }
 
       const { token } = await response.json();
@@ -173,7 +174,7 @@ export class LiveKitVoiceService {
 
     try {
       // For web platform, use Web Speech API
-      if (Platform.OS === 'web' && 'speechSynthesis' in window) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
         return new Promise((resolve, reject) => {
           const utterance = new SpeechSynthesisUtterance(text);
           
@@ -241,7 +242,7 @@ export class LiveKitVoiceService {
 
   // Stop current speech
   async stopSpeaking(): Promise<void> {
-    if (Platform.OS === 'web' && 'speechSynthesis' in window) {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
 
@@ -297,14 +298,33 @@ let liveKitService: LiveKitVoiceService | null = null;
 
 export const getLiveKitService = (): LiveKitVoiceService => {
   if (!liveKitService) {
+    // Get environment variables with proper fallbacks
+    const getEnvVar = (key: string): string => {
+      // Try different ways to access environment variables
+      if (typeof process !== 'undefined' && process.env) {
+        return process.env[key] || '';
+      }
+      
+      // For web environments, try accessing via global
+      if (typeof window !== 'undefined' && (window as any).__ENV__) {
+        return (window as any).__ENV__[key] || '';
+      }
+      
+      return '';
+    };
+
     const config: LiveKitConfig = {
-      url: process.env.EXPO_PUBLIC_LIVEKIT_URL || '',
-      apiKey: process.env.EXPO_PUBLIC_LIVEKIT_API_KEY || '',
-      apiSecret: process.env.EXPO_PUBLIC_LIVEKIT_API_SECRET || '',
+      url: getEnvVar('EXPO_PUBLIC_LIVEKIT_URL') || 'wss://the-whimsical-oracle-3msghxp0.livekit.cloud',
+      apiKey: getEnvVar('EXPO_PUBLIC_LIVEKIT_API_KEY') || 'APImw6vGP9GpLjp',
+      apiSecret: getEnvVar('EXPO_PUBLIC_LIVEKIT_API_SECRET') || 'PZotZRIQC54e8Nvzy0oR2pH1uLEdBPcUtnUoMOMowHK',
     };
 
     if (!config.url || !config.apiKey || !config.apiSecret) {
-      throw new Error('LiveKit configuration is missing. Please check your environment variables.');
+      console.warn('LiveKit configuration is incomplete. Using fallback values.');
+      // Use the provided values as fallbacks
+      config.url = config.url || 'wss://the-whimsical-oracle-3msghxp0.livekit.cloud';
+      config.apiKey = config.apiKey || 'APImw6vGP9GpLjp';
+      config.apiSecret = config.apiSecret || 'PZotZRIQC54e8Nvzy0oR2pH1uLEdBPcUtnUoMOMowHK';
     }
 
     liveKitService = new LiveKitVoiceService(config);
