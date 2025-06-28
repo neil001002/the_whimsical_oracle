@@ -1,9 +1,6 @@
 [build]
   command = "npm run build:web"
-  publish = "dist/client"
-
-[functions]
-  directory = "dist/server/_expo/functions"
+  publish = "dist"
 
 [[redirects]]
   from = "/api/*"
@@ -14,3 +11,6 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+[functions]
+  directory = "dist/server/_expo/functions"
