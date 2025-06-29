@@ -10,18 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  User, 
-  Edit3, 
-  Calendar, 
-  Star, 
-  TrendingUp,
-  Award,
-  Clock,
-  Heart,
-  Save,
-  X
-} from 'lucide-react-native';
+import { User, CreditCard as Edit3, Calendar, Star, TrendingUp, Award, Clock, Heart, Save, X } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
