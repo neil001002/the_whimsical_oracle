@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video, Crown, Sparkles, AlertCircle, CheckCircle } from 'lucide-react-native';
+import { Video, Crown, Sparkles, CircleAlert as AlertCircle, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
 import { useVideoOracle } from '@/contexts/VideoOracleContext';
