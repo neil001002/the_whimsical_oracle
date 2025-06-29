@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,13 +18,15 @@ import {
   Shield, 
   Sparkles,
   Check,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useOracle } from '@/contexts/OracleContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const { width } = Dimensions.get('window');
 
@@ -37,8 +40,21 @@ interface PremiumFeature {
 }
 
 export default function PremiumScreen() {
-  const { colors, fonts, spacing } = useTheme();
-  const { userPreferences, updatePreferences } = useOracle();
+  const { colors, fonts } = useTheme();
+  const { 
+    subscriptionStatus, 
+    availablePackages, 
+    subscriptionTiers,
+    isLoading,
+    error,
+    canAccessPremiumFeatures,
+    isRevenueCatAvailable,
+    purchaseSubscription,
+    restorePurchases,
+    refreshSubscriptionStatus
+  } = useSubscription();
+  
+  const [purchasingPackageId, setPurchasingPackageId] = useState<string | null>(null);
 
   const features: PremiumFeature[] = [
     {
@@ -107,40 +123,52 @@ export default function PremiumScreen() {
     },
   ];
 
-  const plans = [
-    {
-      id: 'free',
-      name: 'Seeker',
-      price: 'Free',
-      description: 'Begin your mystical journey',
-      color: colors.textSecondary,
-      features: features.filter(f => f.free),
-    },
-    {
-      id: 'premium',
-      name: 'Mystic',
-      price: '$4.99/month',
-      description: 'Unlock deeper wisdom',
-      color: colors.accent,
-      features: features.filter(f => f.premium),
-      popular: true,
-    },
-    {
-      id: 'mystic',
-      name: 'Oracle Master',
-      price: '$9.99/month',
-      description: 'Complete mystical mastery',
-      color: colors.accent,
-      features: features.filter(f => f.mystic),
-    },
-  ];
+  const handlePurchase = async (packageId: string) => {
+    const packageToPurchase = availablePackages.find(pkg => pkg.identifier === packageId);
+    
+    if (!packageToPurchase) {
+      Alert.alert('Error', 'Package not found');
+      return;
+    }
 
-  const handleUpgrade = (planId: string) => {
-    // In a real app, this would integrate with RevenueCat
-    console.log(`Upgrading to ${planId} plan`);
-    updatePreferences({ 
-      subscriptionTier: planId as 'free' | 'premium' | 'mystic' 
-    });
+    setPurchasingPackageId(packageId);
+    
+    try {
+      const success = await purchaseSubscription(packageToPurchase);
+      
+      if (success) {
+        Alert.alert(
+          'Purchase Successful! 🎉',
+          'Welcome to your enhanced mystical journey! Your premium features are now active.',
+          [{ text: 'Continue', style: 'default' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        'Purchase Failed',
+        'Unable to complete your purchase. Please try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    } finally {
+      setPurchasingPackageId(null);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    try {
+      await restorePurchases();
+      Alert.alert(
+        'Restore Complete',
+        'Your purchases have been restored successfully!',
+        [{ text: 'OK', style: 'default' }]
+      );
+    } catch (error) {
+      Alert.alert(
+        'Restore Failed',
+        'Unable to restore purchases. Please try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
   };
 
   const renderFeatureComparison = () => (
@@ -208,67 +236,100 @@ export default function PremiumScreen() {
     </MysticalCard>
   );
 
-  const renderPlanCard = (plan: any) => (
-    <MysticalCard 
-      key={plan.id}
-      glowColor={plan.popular ? colors.accent : undefined}
-      style={[
-        styles.planCard,
-        plan.popular && styles.popularPlan,
-        userPreferences.subscriptionTier === plan.id && styles.currentPlan,
-      ]}
-    >
-      {plan.popular && (
-        <View style={[styles.popularBadge, { backgroundColor: colors.accent }]}>
-          <Text style={[styles.popularText, { color: colors.background, fontFamily: fonts.body }]}>
-            Most Popular
-          </Text>
-        </View>
-      )}
-      
-      <View style={styles.planHeader}>
-        <Text style={[styles.planName, { color: colors.text, fontFamily: fonts.title }]}>
-          {plan.name}
-        </Text>
-        <Text style={[styles.planPrice, { color: plan.color, fontFamily: fonts.title }]}>
-          {plan.price}
-        </Text>
-        <Text style={[styles.planDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-          {plan.description}
-        </Text>
-      </View>
-
-      <View style={styles.planFeatures}>
-        {plan.features.slice(0, 4).map((feature: PremiumFeature, index: number) => (
-          <View key={index} style={styles.planFeature}>
-            <Check color={colors.success} size={16} />
-            <Text style={[styles.planFeatureText, { color: colors.text, fontFamily: fonts.body }]}>
-              {feature.title}
+  const renderSubscriptionCard = (tier: any) => {
+    const isCurrentTier = subscriptionStatus.tier === tier.id;
+    const availablePackage = availablePackages.find(pkg => pkg.identifier === tier.productId);
+    const isPurchasing = purchasingPackageId === tier.productId;
+    
+    return (
+      <MysticalCard 
+        key={tier.id}
+        glowColor={tier.popular ? colors.accent : undefined}
+        style={[
+          styles.subscriptionCard,
+          tier.popular && styles.popularCard,
+          isCurrentTier && styles.currentCard,
+        ]}
+      >
+        {tier.popular && (
+          <View style={[styles.popularBadge, { backgroundColor: colors.accent }]}>
+            <Text style={[styles.popularText, { color: colors.background, fontFamily: fonts.body }]}>
+              Most Popular
             </Text>
           </View>
-        ))}
-        {plan.features.length > 4 && (
-          <Text style={[styles.moreFeatures, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            +{plan.features.length - 4} more features
-          </Text>
         )}
-      </View>
+        
+        <View style={styles.cardHeader}>
+          <Text style={[styles.tierName, { color: colors.text, fontFamily: fonts.title }]}>
+            {tier.name}
+          </Text>
+          <Text style={[styles.tierPrice, { color: colors.accent, fontFamily: fonts.title }]}>
+            {availablePackage ? availablePackage.product.priceString : tier.price}
+          </Text>
+          <Text style={[styles.tierDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+            {tier.description}
+          </Text>
+        </View>
 
-      <MagicalButton
-        title={
-          userPreferences.subscriptionTier === plan.id 
-            ? 'Current Plan' 
-            : plan.id === 'free' 
-              ? 'Current Plan' 
-              : 'Upgrade Now'
-        }
-        onPress={() => handleUpgrade(plan.id)}
-        disabled={userPreferences.subscriptionTier === plan.id}
-        variant={plan.popular ? 'primary' : 'secondary'}
-        style={styles.planButton}
-      />
-    </MysticalCard>
-  );
+        <View style={styles.featuresList}>
+          {tier.features.slice(0, 4).map((feature: string, index: number) => (
+            <View key={index} style={styles.featureItem}>
+              <Check color={colors.success} size={16} />
+              <Text style={[styles.featureText, { color: colors.text, fontFamily: fonts.body }]}>
+                {feature}
+              </Text>
+            </View>
+          ))}
+          {tier.features.length > 4 && (
+            <Text style={[styles.moreFeatures, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+              +{tier.features.length - 4} more features
+            </Text>
+          )}
+        </View>
+
+        {tier.id === 'free' ? (
+          <MagicalButton
+            title={isCurrentTier ? 'Current Plan' : 'Free Forever'}
+            onPress={() => {}}
+            disabled={true}
+            variant="secondary"
+            style={styles.subscriptionButton}
+          />
+        ) : (
+          <MagicalButton
+            title={
+              isPurchasing ? 'Processing...' : 
+              isCurrentTier ? 'Current Plan' : 
+              `Upgrade to ${tier.name}`
+            }
+            onPress={() => handlePurchase(tier.productId)}
+            disabled={isPurchasing || isCurrentTier || !availablePackage}
+            variant={tier.popular ? 'golden' : 'primary'}
+            style={styles.subscriptionButton}
+          />
+        )}
+      </MysticalCard>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <LinearGradient
+        colors={[colors.background, colors.surface]}
+        style={styles.container}
+      >
+        <StarField />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <LoadingSpinner color={colors.accent} size={60} />
+            <Text style={[styles.loadingText, { color: colors.text, fontFamily: fonts.body }]}>
+              Loading mystical offerings...
+            </Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -292,84 +353,90 @@ export default function PremiumScreen() {
             </Text>
           </View>
 
-          {/* Current Plan Status */}
+          {/* Error Message */}
+          {error && (
+            <MysticalCard style={styles.errorCard}>
+              <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.body }]}>
+                {error}
+              </Text>
+              <MagicalButton
+                title="Retry"
+                onPress={refreshSubscriptionStatus}
+                variant="secondary"
+                size="small"
+                style={styles.retryButton}
+              />
+            </MysticalCard>
+          )}
+
+          {/* Service Status */}
+          {!isRevenueCatAvailable && (
+            <MysticalCard style={styles.statusCard}>
+              <Text style={[styles.statusTitle, { color: colors.warning, fontFamily: fonts.title }]}>
+                Development Mode
+              </Text>
+              <Text style={[styles.statusText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+                RevenueCat is not available in this environment. Subscription features are simulated for development purposes.
+              </Text>
+            </MysticalCard>
+          )}
+
+          {/* Current Subscription Status */}
           <MysticalCard style={styles.statusCard}>
             <View style={styles.statusContent}>
               <Text style={[styles.statusTitle, { color: colors.text, fontFamily: fonts.title }]}>
                 Current Plan
               </Text>
               <Text style={[styles.statusPlan, { color: colors.accent, fontFamily: fonts.title }]}>
-                {userPreferences.subscriptionTier.toUpperCase()} TIER
+                {subscriptionStatus.tier.toUpperCase()} TIER
               </Text>
               <Text style={[styles.statusDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                {userPreferences.subscriptionTier === 'free' 
+                {subscriptionStatus.tier === 'free' 
                   ? 'Access to basic oracle features'
-                  : userPreferences.subscriptionTier === 'premium'
+                  : subscriptionStatus.tier === 'premium'
                     ? 'Enhanced mystical capabilities'
                     : 'Complete oracle mastery'
                 }
               </Text>
+              {subscriptionStatus.expirationDate && (
+                <Text style={[styles.expirationText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+                  {subscriptionStatus.willRenew ? 'Renews' : 'Expires'} on{' '}
+                  {subscriptionStatus.expirationDate.toLocaleDateString()}
+                </Text>
+              )}
             </View>
           </MysticalCard>
 
-          {/* Pricing Plans */}
-          <View style={styles.plansContainer}>
+          {/* Subscription Tiers */}
+          <View style={styles.tiersContainer}>
             <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
               Choose Your Mystical Path
             </Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.plansScroll}
+              contentContainerStyle={styles.tiersScroll}
             >
-              {plans.map(renderPlanCard)}
+              {subscriptionTiers.map(renderSubscriptionCard)}
             </ScrollView>
           </View>
 
           {/* Feature Comparison */}
           {renderFeatureComparison()}
 
-          {/* Benefits Section */}
-          <MysticalCard style={styles.benefitsCard}>
-            <Text style={[styles.benefitsTitle, { color: colors.text, fontFamily: fonts.title }]}>
-              Why Upgrade?
+          {/* Restore Purchases */}
+          <View style={styles.restoreContainer}>
+            <MagicalButton
+              title="Restore Purchases"
+              onPress={handleRestorePurchases}
+              variant="secondary"
+              size="medium"
+              style={styles.restoreButton}
+            />
+            <Text style={[styles.restoreText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+              Already purchased? Restore your mystical powers
             </Text>
-            <View style={styles.benefitsList}>
-              <View style={styles.benefit}>
-                <Infinity color={colors.accent} size={24} />
-                <View style={styles.benefitText}>
-                  <Text style={[styles.benefitTitle, { color: colors.text, fontFamily: fonts.body }]}>
-                    Unlimited Wisdom
-                  </Text>
-                  <Text style={[styles.benefitDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                    No limits on daily oracle consultations
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.benefit}>
-                <Crown color={colors.accent} size={24} />
-                <View style={styles.benefitText}>
-                  <Text style={[styles.benefitTitle, { color: colors.text, fontFamily: fonts.body }]}>
-                    Exclusive Content
-                  </Text>
-                  <Text style={[styles.benefitDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                    Access premium personas and interpretations
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.benefit}>
-                <Sparkles color={colors.accent} size={24} />
-                <View style={styles.benefitText}>
-                  <Text style={[styles.benefitTitle, { color: colors.text, fontFamily: fonts.body }]}>
-                    Advanced Features
-                  </Text>
-                  <Text style={[styles.benefitDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                    Voice chat, cosmic calendar, and more
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </MysticalCard>
+          </View>
 
           {/* Footer */}
           <View style={styles.footer}>
@@ -393,6 +460,16 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 20,
+    textAlign: 'center',
+  },
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 100,
@@ -413,6 +490,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.8,
   },
+  errorCard: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  retryButton: {
+    alignSelf: 'center',
+  },
   statusCard: {
     marginBottom: 32,
   },
@@ -432,27 +521,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.8,
   },
+  statusText: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 20,
+  },
+  expirationText: {
+    fontSize: 12,
+    marginTop: 8,
+    opacity: 0.7,
+  },
   sectionTitle: {
     fontSize: 24,
     marginBottom: 20,
     textAlign: 'center',
   },
-  plansContainer: {
+  tiersContainer: {
     marginBottom: 32,
   },
-  plansScroll: {
+  tiersScroll: {
     paddingHorizontal: 10,
   },
-  planCard: {
+  subscriptionCard: {
     width: width * 0.75,
     marginHorizontal: 10,
     position: 'relative',
   },
-  popularPlan: {
+  popularCard: {
     borderWidth: 2,
     borderColor: 'rgba(245, 158, 11, 0.5)',
   },
-  currentPlan: {
+  currentCard: {
     borderWidth: 2,
     borderColor: 'rgba(16, 185, 129, 0.5)',
   },
@@ -471,33 +571,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  planHeader: {
+  cardHeader: {
     alignItems: 'center',
     marginBottom: 24,
     marginTop: 16,
   },
-  planName: {
+  tierName: {
     fontSize: 20,
     marginBottom: 8,
   },
-  planPrice: {
+  tierPrice: {
     fontSize: 28,
     marginBottom: 8,
   },
-  planDescription: {
+  tierDescription: {
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.8,
   },
-  planFeatures: {
+  featuresList: {
     marginBottom: 24,
   },
-  planFeature: {
+  featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  planFeatureText: {
+  featureText: {
     fontSize: 14,
     marginLeft: 12,
     flex: 1,
@@ -508,7 +608,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     opacity: 0.7,
   },
-  planButton: {
+  subscriptionButton: {
     alignSelf: 'center',
     minWidth: '80%',
   },
@@ -554,34 +654,17 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
   },
-  benefitsCard: {
+  restoreContainer: {
+    alignItems: 'center',
     marginBottom: 32,
   },
-  benefitsTitle: {
-    fontSize: 20,
-    marginBottom: 20,
-    textAlign: 'center',
+  restoreButton: {
+    marginBottom: 12,
   },
-  benefitsList: {
-    gap: 20,
-  },
-  benefit: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  benefitText: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  benefitTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  benefitDescription: {
+  restoreText: {
     fontSize: 14,
+    textAlign: 'center',
     opacity: 0.8,
-    lineHeight: 20,
   },
   footer: {
     alignItems: 'center',

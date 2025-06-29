@@ -16,6 +16,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { OracleProvider } from '@/contexts/OracleContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 
 // Only register WebRTC globals on supported platforms and when available
 if (Platform.OS !== 'web') {
@@ -31,7 +32,7 @@ if (Platform.OS !== 'web') {
       console.log('WebRTC not available in Expo Go - LiveKit features will be disabled');
     }
   } catch (error) {
-    console.warn('Failed to register WebRTC globals:', error.message);
+    console.warn('Failed to register WebRTC globals:', error instanceof Error ? error.message : String(error));
     console.log('LiveKit voice features will be disabled. To enable them, create a custom development build.');
   }
 }
@@ -61,14 +62,16 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <OracleProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="light" backgroundColor="#0F0F23" />
-        </OracleProvider>
+        <SubscriptionProvider>
+          <OracleProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <StatusBar style="light" backgroundColor="#0F0F23" />
+          </OracleProvider>
+        </SubscriptionProvider>
       </AuthProvider>
     </ThemeProvider>
   );
