@@ -52,7 +52,7 @@ export default function HomeScreen() {
   const hasReachedLimit = dailyReadings >= dailyLimit && userPreferences.subscriptionTier === 'free';
 
   const generateOmen = async () => {
-    console.log('Generate omen button pressed!'); // Debug log
+    console.log('Generate omen button pressed!');
     
     if (hasReachedLimit) {
       setShowUpgradeNotification(true);
@@ -665,24 +665,12 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     alignItems: 'center',
-    // Ensure proper spacing and z-index for web
-    ...Platform.select({
-      web: {
-        zIndex: 100,
-        position: 'relative',
-      },
-    }),
+    zIndex: 1000,
   },
   oracleButton: {
     alignSelf: 'center',
     minWidth: width * 0.7,
-    // Ensure button is properly positioned and clickable on web
-    ...Platform.select({
-      web: {
-        position: 'relative',
-        zIndex: 100,
-      },
-    }),
+    zIndex: 1000,
   },
   upgradeHint: {
     flexDirection: 'row',
@@ -692,26 +680,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
     borderWidth: 1,
-    // Web-specific fixes for clickability
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        userSelect: 'none',
-        outlineWidth: 0,
-        outlineStyle: 'none',
-      },
-    }),
   },
   upgradeHintText: {
     fontSize: 14,
     textAlign: 'center',
     marginHorizontal: 12,
     fontWeight: '500',
-    // Prevent text selection on web
-    ...Platform.select({
-      web: {
-        userSelect: 'none',
-      },
-    }),
   },
 });
