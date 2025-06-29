@@ -239,7 +239,6 @@ const styles = StyleSheet.create({
       web: {
         cursor: 'pointer',
         userSelect: 'none',
-        outline: 'none',
         // Ensure the button is above other elements
         zIndex: 100,
       },
