@@ -52,7 +52,7 @@ export default function HomeScreen() {
   const hasReachedLimit = dailyReadings >= dailyLimit && userPreferences.subscriptionTier === 'free';
 
   const generateOmen = async () => {
-    console.log('Generate omen button pressed!');
+    console.log('Generate omen button pressed!'); // Debug log
     
     if (hasReachedLimit) {
       setShowUpgradeNotification(true);
@@ -186,263 +186,234 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Background Layer - StarField behind everything */}
-      <View style={styles.backgroundLayer}>
-        <StarField />
-      </View>
-      
-      {/* Content Layer - All interactive content */}
-      <View style={styles.contentLayer}>
-        <LinearGradient
-          colors={colors.gradients.cosmic}
-          style={styles.backgroundGradient}
+    <LinearGradient
+      colors={colors.gradients.cosmic}
+      style={styles.container}
+    >
+      <StarField />
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <SafeAreaView style={styles.safeArea}>
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={[styles.greeting, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+              {getGreeting()}
+            </Text>
+            <Text style={[styles.title, { color: colors.text, fontFamily: fonts.title }]}>
+              The Whimsical Oracle
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textTertiary, fontFamily: fonts.body }]}>
+              Where cosmic wisdom meets earthly guidance
+            </Text>
+          </View>
+
+          {/* Upgrade Notification */}
+          {showUpgradeNotification && (
+            <NotificationCard
+              type="mystical"
+              title="✨ Mystical Limit Reached"
+              message="You've reached your daily reading limit. Upgrade to Premium for unlimited cosmic guidance and enhanced mystical features!"
+              onDismiss={() => setShowUpgradeNotification(false)}
+              actionText="Unlock Mystical Powers"
+              onAction={() => {
+                setShowUpgradeNotification(false);
+                // Navigate to premium screen
+              }}
+            />
+          )}
+
+          {/* Voice Service Warning */}
+          {!isVoiceServiceAvailable && (
+            <NotificationCard
+              type="warning"
+              title="Voice Features Limited"
+              message="Voice features are not fully available on this platform. For complete mystical voice functionality, use a custom development build."
+              onDismiss={() => {}}
+            />
+          )}
+
+          {/* Daily Progress */}
+          {renderDailyProgress()}
+
+          {/* Oracle Persona Display */}
+          <OrnateFrame variant="cosmic" size="large">
+            <MysticalCard 
+              glowColor={selectedPersona.colorScheme.accent} 
+              variant="ethereal" 
+              animated={true}
+              style={styles.personaCard}
             >
-              {/* Header */}
-              <View style={styles.header}>
-                <Text style={[styles.greeting, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                  {getGreeting()}
+              <View style={styles.personaContent}>
+                <Text style={[styles.personaAvatar, { fontSize: 80 }]}>
+                  {selectedPersona.avatar}
                 </Text>
-                <Text style={[styles.title, { color: colors.text, fontFamily: fonts.title }]}>
-                  The Whimsical Oracle
+                <Text style={[styles.personaName, { color: colors.text, fontFamily: fonts.title }]}>
+                  {selectedPersona.name}
                 </Text>
-                <Text style={[styles.subtitle, { color: colors.textTertiary, fontFamily: fonts.body }]}>
-                  Where cosmic wisdom meets earthly guidance
+                <Text style={[styles.personaDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+                  {selectedPersona.description}
                 </Text>
-              </View>
-
-              {/* Upgrade Notification */}
-              {showUpgradeNotification && (
-                <NotificationCard
-                  type="mystical"
-                  title="✨ Mystical Limit Reached"
-                  message="You've reached your daily reading limit. Upgrade to Premium for unlimited cosmic guidance and enhanced mystical features!"
-                  onDismiss={() => setShowUpgradeNotification(false)}
-                  actionText="Unlock Mystical Powers"
-                  onAction={() => {
-                    setShowUpgradeNotification(false);
-                    // Navigate to premium screen
-                  }}
-                />
-              )}
-
-              {/* Voice Service Warning */}
-              {!isVoiceServiceAvailable && (
-                <NotificationCard
-                  type="warning"
-                  title="Voice Features Limited"
-                  message="Voice features are not fully available on this platform. For complete mystical voice functionality, use a custom development build."
-                  onDismiss={() => {}}
-                />
-              )}
-
-              {/* Daily Progress */}
-              {renderDailyProgress()}
-
-              {/* Oracle Persona Display */}
-              <OrnateFrame variant="cosmic" size="large">
-                <MysticalCard 
-                  glowColor={selectedPersona.colorScheme.accent} 
-                  variant="ethereal" 
-                  animated={true}
-                  style={styles.personaCard}
-                >
-                  <View style={styles.personaContent}>
-                    <Text style={[styles.personaAvatar, { fontSize: 80 }]}>
-                      {selectedPersona.avatar}
+                {userPreferences.subscriptionTier !== 'free' && (
+                  <View style={[styles.premiumBadge, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
+                    <Crown color={colors.accent} size={16} />
+                    <Text style={[styles.premiumText, { color: colors.accent, fontFamily: fonts.body }]}>
+                      {userPreferences.subscriptionTier.toUpperCase()} MYSTIC
                     </Text>
-                    <Text style={[styles.personaName, { color: colors.text, fontFamily: fonts.title }]}>
-                      {selectedPersona.name}
-                    </Text>
-                    <Text style={[styles.personaDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                      {selectedPersona.description}
-                    </Text>
-                    {userPreferences.subscriptionTier !== 'free' && (
-                      <View style={[styles.premiumBadge, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
-                        <Crown color={colors.accent} size={16} />
-                        <Text style={[styles.premiumText, { color: colors.accent, fontFamily: fonts.body }]}>
-                          {userPreferences.subscriptionTier.toUpperCase()} MYSTIC
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </MysticalCard>
-              </OrnateFrame>
-
-              {/* Voice Chat Button */}
-              {userPreferences.realTimeChatEnabled && (
-                <View style={styles.voiceChatContainer}>
-                  <VoiceChatButton />
-                </View>
-              )}
-
-              {/* Omen Display or Generation */}
-              {currentOmen ? (
-                <MysticalCard 
-                  variant="golden" 
-                  animated={true} 
-                  glowColor={colors.accent}
-                  style={styles.omenCard}
-                >
-                  <View style={styles.omenContent}>
-                    <View style={styles.omenHeader}>
-                      <Text style={[styles.omenSymbol, { fontSize: 64 }]}>
-                        {currentOmen.symbol}
-                      </Text>
-                      {userPreferences.voiceEnabled && isVoiceServiceAvailable && (
-                        <TouchableOpacity
-                          onPress={handleVoiceToggle}
-                          style={[styles.voiceButton, { borderColor: colors.accent, backgroundColor: colors.glassGolden }]}
-                        >
-                          {isPlayingVoice ? (
-                            <VolumeX color={colors.accent} size={20} />
-                          ) : (
-                            <Volume2 color={colors.accent} size={20} />
-                          )}
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    
-                    <View style={[styles.divider, { backgroundColor: colors.borderGolden }]} />
-                    
-                    <Text style={[styles.omenPhrase, { color: colors.accent, fontFamily: fonts.title }]}>
-                      "{currentOmen.crypticPhrase}"
-                    </Text>
-                    
-                    <Text style={[styles.omenInterpretation, { color: colors.text, fontFamily: fonts.body }]}>
-                      {currentOmen.interpretation}
-                    </Text>
-                    
-                    <View style={[styles.adviceContainer, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
-                      <View style={styles.adviceHeader}>
-                        <Sparkles color={colors.accent} size={16} />
-                        <Text style={[styles.adviceLabel, { color: colors.accent, fontFamily: fonts.body }]}>
-                          Mystical Guidance
-                        </Text>
-                      </View>
-                      <Text style={[styles.advice, { color: colors.text, fontFamily: fonts.body }]}>
-                        {currentOmen.advice}
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.omenMeta}>
-                      <View style={styles.metaItem}>
-                        <Text style={[styles.metaLabel, { color: colors.textTertiary, fontFamily: fonts.body }]}>
-                          Cosmic Resonance
-                        </Text>
-                        <Text style={[styles.confidence, { color: colors.accent, fontFamily: fonts.body }]}>
-                          {Math.round(currentOmen.confidence * 100)}%
-                        </Text>
-                      </View>
-                      <View style={styles.metaItem}>
-                        <Text style={[styles.metaLabel, { color: colors.textTertiary, fontFamily: fonts.body }]}>
-                          Category
-                        </Text>
-                        <Text style={[styles.category, { color: colors.accentSecondary, fontFamily: fonts.body }]}>
-                          #{currentOmen.category}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    {isPlayingVoice && (
-                      <View style={[styles.playingIndicator, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
-                        <Text style={[styles.playingText, { color: colors.accent, fontFamily: fonts.body }]}>
-                          🎵 Oracle speaking mystical wisdom...
-                        </Text>
-                      </View>
-                    )}
-                    
-                    {voiceError && (
-                      <View style={styles.errorIndicator}>
-                        <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.body }]}>
-                          {voiceError}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </MysticalCard>
-              ) : (
-                <MysticalCard variant="ethereal" animated={true} style={styles.omenCard}>
-                  <View style={styles.emptyOmenContent}>
-                    <Text style={[styles.emptyOmenSymbol, { fontSize: 100 }]}>🔮</Text>
-                    <Text style={[styles.emptyOmenText, { color: colors.text, fontFamily: fonts.title }]}>
-                      The Oracle Awaits...
-                    </Text>
-                    <Text style={[styles.emptyOmenSubtext, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                      Touch the mystical crystal to receive your cosmic guidance
-                    </Text>
-                    <View style={styles.mysticalElements}>
-                      <Text style={styles.mysticalSymbol}>✨</Text>
-                      <Text style={styles.mysticalSymbol}>🌟</Text>
-                      <Text style={styles.mysticalSymbol}>✨</Text>
-                    </View>
-                  </View>
-                </MysticalCard>
-              )}
-
-              {/* Action Buttons - Isolated in their own container */}
-              <View style={styles.buttonContainer}>
-                <View style={styles.buttonWrapper}>
-                  <MagicalButton
-                    title={isGenerating ? "Consulting the Cosmic Forces..." : "Receive Oracle"}
-                    onPress={generateOmen}
-                    disabled={isGenerating || hasReachedLimit}
-                    size="large"
-                    variant="golden"
-                    animated={!isGenerating}
-                    glowing={!hasReachedLimit}
-                    style={styles.oracleButton}
-                  />
-                </View>
-                
-                {hasReachedLimit && (
-                  <View style={styles.upgradeWrapper}>
-                    <TouchableOpacity 
-                      style={[styles.upgradeHint, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}
-                      accessible={true}
-                      accessibilityRole="button"
-                      accessibilityLabel="Unlock unlimited mystical wisdom"
-                    >
-                      <Crown color={colors.accent} size={20} />
-                      <Text style={[styles.upgradeHintText, { color: colors.accent, fontFamily: fonts.body }]}>
-                        Unlock unlimited mystical wisdom
-                      </Text>
-                      <Sparkles color={colors.accent} size={16} />
-                    </TouchableOpacity>
                   </View>
                 )}
               </View>
-            </ScrollView>
-          </SafeAreaView>
-        </LinearGradient>
-      </View>
-    </View>
+            </MysticalCard>
+          </OrnateFrame>
+
+          {/* Voice Chat Button */}
+          {userPreferences.realTimeChatEnabled && (
+            <View style={styles.voiceChatContainer}>
+              <VoiceChatButton />
+            </View>
+          )}
+
+          {/* Omen Display or Generation */}
+          {currentOmen ? (
+            <MysticalCard 
+              variant="golden" 
+              animated={true} 
+              glowColor={colors.accent}
+              style={styles.omenCard}
+            >
+              <View style={styles.omenContent}>
+                <View style={styles.omenHeader}>
+                  <Text style={[styles.omenSymbol, { fontSize: 64 }]}>
+                    {currentOmen.symbol}
+                  </Text>
+                  {userPreferences.voiceEnabled && isVoiceServiceAvailable && (
+                    <TouchableOpacity
+                      onPress={handleVoiceToggle}
+                      style={[styles.voiceButton, { borderColor: colors.accent, backgroundColor: colors.glassGolden }]}
+                    >
+                      {isPlayingVoice ? (
+                        <VolumeX color={colors.accent} size={20} />
+                      ) : (
+                        <Volume2 color={colors.accent} size={20} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+                
+                <View style={[styles.divider, { backgroundColor: colors.borderGolden }]} />
+                
+                <Text style={[styles.omenPhrase, { color: colors.accent, fontFamily: fonts.title }]}>
+                  "{currentOmen.crypticPhrase}"
+                </Text>
+                
+                <Text style={[styles.omenInterpretation, { color: colors.text, fontFamily: fonts.body }]}>
+                  {currentOmen.interpretation}
+                </Text>
+                
+                <View style={[styles.adviceContainer, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
+                  <View style={styles.adviceHeader}>
+                    <Sparkles color={colors.accent} size={16} />
+                    <Text style={[styles.adviceLabel, { color: colors.accent, fontFamily: fonts.body }]}>
+                      Mystical Guidance
+                    </Text>
+                  </View>
+                  <Text style={[styles.advice, { color: colors.text, fontFamily: fonts.body }]}>
+                    {currentOmen.advice}
+                  </Text>
+                </View>
+                
+                <View style={styles.omenMeta}>
+                  <View style={styles.metaItem}>
+                    <Text style={[styles.metaLabel, { color: colors.textTertiary, fontFamily: fonts.body }]}>
+                      Cosmic Resonance
+                    </Text>
+                    <Text style={[styles.confidence, { color: colors.accent, fontFamily: fonts.body }]}>
+                      {Math.round(currentOmen.confidence * 100)}%
+                    </Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Text style={[styles.metaLabel, { color: colors.textTertiary, fontFamily: fonts.body }]}>
+                      Category
+                    </Text>
+                    <Text style={[styles.category, { color: colors.accentSecondary, fontFamily: fonts.body }]}>
+                      #{currentOmen.category}
+                    </Text>
+                  </View>
+                </View>
+                
+                {isPlayingVoice && (
+                  <View style={[styles.playingIndicator, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
+                    <Text style={[styles.playingText, { color: colors.accent, fontFamily: fonts.body }]}>
+                      🎵 Oracle speaking mystical wisdom...
+                    </Text>
+                  </View>
+                )}
+                
+                {voiceError && (
+                  <View style={styles.errorIndicator}>
+                    <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.body }]}>
+                      {voiceError}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </MysticalCard>
+          ) : (
+            <MysticalCard variant="ethereal" animated={true} style={styles.omenCard}>
+              <View style={styles.emptyOmenContent}>
+                <Text style={[styles.emptyOmenSymbol, { fontSize: 100 }]}>🔮</Text>
+                <Text style={[styles.emptyOmenText, { color: colors.text, fontFamily: fonts.title }]}>
+                  The Oracle Awaits...
+                </Text>
+                <Text style={[styles.emptyOmenSubtext, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+                  Touch the mystical crystal to receive your cosmic guidance
+                </Text>
+                <View style={styles.mysticalElements}>
+                  <Text style={styles.mysticalSymbol}>✨</Text>
+                  <Text style={styles.mysticalSymbol}>🌟</Text>
+                  <Text style={styles.mysticalSymbol}>✨</Text>
+                </View>
+              </View>
+            </MysticalCard>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.buttonContainer}>
+            <MagicalButton
+              title={isGenerating ? "Consulting the Cosmic Forces..." : "Receive Oracle"}
+              onPress={generateOmen}
+              disabled={isGenerating || hasReachedLimit}
+              size="large"
+              variant="golden"
+              animated={!isGenerating}
+              glowing={!hasReachedLimit}
+              style={styles.oracleButton}
+            />
+            
+            {hasReachedLimit && (
+              <TouchableOpacity 
+                style={[styles.upgradeHint, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Unlock unlimited mystical wisdom"
+              >
+                <Crown color={colors.accent} size={20} />
+                <Text style={[styles.upgradeHintText, { color: colors.accent, fontFamily: fonts.body }]}>
+                  Unlock unlimited mystical wisdom
+                </Text>
+                <Sparkles color={colors.accent} size={16} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    position: 'relative',
-  },
-  backgroundLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 0,
-  },
-  contentLayer: {
-    flex: 1,
-    zIndex: 1,
-  },
-  backgroundGradient: {
     flex: 1,
   },
   safeArea: {
@@ -696,40 +667,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     zIndex: 1000,
-    marginTop: 20,
-  },
-  buttonWrapper: {
-    position: 'relative',
-    zIndex: 1001,
-    width: '100%',
-    alignItems: 'center',
+    // Ensure proper spacing and z-index for web
+    ...Platform.select({
+      web: {
+        zIndex: 100,
+        position: 'relative',
+      },
+    }),
   },
   oracleButton: {
     alignSelf: 'center',
     minWidth: width * 0.7,
-    position: 'relative',
-    zIndex: 1002,
-  },
-  upgradeWrapper: {
-    position: 'relative',
-    zIndex: 1001,
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 20,
+    // Ensure button is properly positioned and clickable on web
+    ...Platform.select({
+      web: {
+        position: 'relative',
+        zIndex: 100,
+      },
+    }),
   },
   upgradeHint: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 20,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
     borderWidth: 1,
-    position: 'relative',
-    zIndex: 1002,
+    // Web-specific fixes for clickability
     ...Platform.select({
       web: {
         cursor: 'pointer',
         userSelect: 'none',
+        outlineWidth: 0,
+        outlineStyle: 'none',
       },
     }),
   },
@@ -738,6 +709,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 12,
     fontWeight: '500',
+    // Prevent text selection on web
     ...Platform.select({
       web: {
         userSelect: 'none',
