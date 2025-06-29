@@ -37,7 +37,7 @@ export default function TabsLayout() {
           title: 'Home',
           tabBarIcon: ({ color, size, focused }) => (
             <Image
-              source={PremiumPng}
+              source={HomePng}
               style={{
                 width: 36,
                 height: 36,
