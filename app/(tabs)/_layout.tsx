@@ -6,7 +6,7 @@ import { Image } from 'react-native';
 import HomePng from '../../assets/icons/Home_icon.png';
 import HistoryPng from '../../assets/icons/History_icon.png';
 import SettingsPng from '../../assets/icons/Settings_icon.png';
-import PremiumPng from '../../assets/icons/Premium_icon.png';
+import PremiumPng from '../../assets/icons/Premium_icon.PNG';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
