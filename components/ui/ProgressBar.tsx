@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  useEffect,
 } from 'react-native-reanimated';
 import { useTheme } from '@/contexts/ThemeContext';
 
