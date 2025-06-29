@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
       web: {
         cursor: 'pointer',
         userSelect: 'none',
-        outline: 'none',
+        outlineWidth: 0,
       },
     }),
   },
