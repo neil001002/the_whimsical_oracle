@@ -274,6 +274,12 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Check if voice service is available - if not, set error and return gracefully
+    if (!isVoiceServiceAvailable) {
+      setVoiceError('Voice service is not available on this platform. Voice features require either Web Speech API (web) or LiveKit (mobile with custom build).');
+      return;
+    }
+
     // Clear any previous errors
     setVoiceError(null);
 
@@ -319,24 +325,21 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
         });
       }
       
-      // For mobile platforms, check if LiveKit is available
-      if (!liveKitServiceRef.current || !isLiveKitAvailable) {
-        throw new Error('Voice service not available on this platform');
-      }
-
-      // Configure voice based on persona
-      const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
-      
       // For mobile platforms with LiveKit available
-      const status = liveKitServiceRef.current.getSessionStatus();
-      if (!status.isConnected) {
-        const roomName = `oracle-tts-${Date.now()}`;
-        const participantName = `oracle-${selectedPersona.id}`;
-        await liveKitServiceRef.current.connectToVoiceSession(roomName, participantName);
-      }
+      if (liveKitServiceRef.current && isLiveKitAvailable) {
+        // Configure voice based on persona
+        const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
+        
+        const status = liveKitServiceRef.current.getSessionStatus();
+        if (!status.isConnected) {
+          const roomName = `oracle-tts-${Date.now()}`;
+          const participantName = `oracle-${selectedPersona.id}`;
+          await liveKitServiceRef.current.connectToVoiceSession(roomName, participantName);
+        }
 
-      await liveKitServiceRef.current.speakText(text, voiceConfig);
-      setIsVoiceServiceAvailable(true);
+        await liveKitServiceRef.current.speakText(text, voiceConfig);
+        setIsVoiceServiceAvailable(true);
+      }
       
     } catch (error) {
       console.error('Error playing omen voice:', error);
