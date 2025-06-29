@@ -76,7 +76,7 @@ export function MagicalButton({
   };
 
   const handlePress = () => {
-    console.log('MagicalButton pressed:', title); // Debug log
+    console.log('MagicalButton pressed:', title);
     
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -159,7 +159,6 @@ export function MagicalButton({
         style,
       ]}
       activeOpacity={0.8}
-      // Web-specific accessibility and interaction fixes
       accessible={true}
       accessibilityRole="button"
       accessibilityLabel={title}
@@ -234,20 +233,6 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'flex-start',
     position: 'relative',
-    // Web-specific fixes for clickability
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        userSelect: 'none',
-        // Ensure the button is above other elements
-        zIndex: 1000,
-        // Remove any conflicting outline styles
-        outlineWidth: 0,
-        outlineStyle: 'none',
-        // Ensure proper display
-        display: 'flex',
-      },
-    }),
   },
   glowContainer: {
     position: 'absolute',
@@ -255,7 +240,6 @@ const styles = StyleSheet.create({
     left: -8,
     right: -8,
     bottom: -8,
-    // Ensure glow doesn't interfere with touch events
     pointerEvents: 'none',
   },
   glow: {
@@ -266,15 +250,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
-    // Ensure proper z-index for web
-    ...Platform.select({
-      web: {
-        zIndex: 1,
-        // Remove any conflicting styles
-        outlineWidth: 0,
-        outlineStyle: 'none',
-      },
-    }),
   },
   shimmerContainer: {
     position: 'absolute',
@@ -282,7 +257,6 @@ const styles = StyleSheet.create({
     left: -50,
     right: -50,
     bottom: 0,
-    // Ensure shimmer doesn't interfere with touch events
     pointerEvents: 'none',
   },
   shimmer: {
@@ -293,23 +267,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     zIndex: 1,
-    // Web-specific text selection prevention
-    ...Platform.select({
-      web: {
-        userSelect: 'none',
-        // Ensure text doesn't interfere with button clicks
-        pointerEvents: 'none',
-      },
-    }),
   },
   disabled: {
     opacity: 0.6,
-    // Ensure disabled state is properly handled on web
-    ...Platform.select({
-      web: {
-        cursor: 'not-allowed',
-        pointerEvents: 'none',
-      },
-    }),
   },
 });
