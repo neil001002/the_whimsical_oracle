@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -389,7 +390,12 @@ export default function HomeScreen() {
             />
             
             {hasReachedLimit && (
-              <TouchableOpacity style={[styles.upgradeHint, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
+              <TouchableOpacity 
+                style={[styles.upgradeHint, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Unlock unlimited mystical wisdom"
+              >
                 <Crown color={colors.accent} size={20} />
                 <Text style={[styles.upgradeHintText, { color: colors.accent, fontFamily: fonts.body }]}>
                   Unlock unlimited mystical wisdom
@@ -657,10 +663,23 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     alignItems: 'center',
+    // Ensure proper spacing and z-index for web
+    ...Platform.select({
+      web: {
+        zIndex: 10,
+      },
+    }),
   },
   oracleButton: {
     alignSelf: 'center',
     minWidth: width * 0.7,
+    // Ensure button is properly positioned and clickable on web
+    ...Platform.select({
+      web: {
+        position: 'relative',
+        zIndex: 10,
+      },
+    }),
   },
   upgradeHint: {
     flexDirection: 'row',
@@ -670,11 +689,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
     borderWidth: 1,
+    // Web-specific fixes for clickability
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        userSelect: 'none',
+        outline: 'none',
+      },
+    }),
   },
   upgradeHintText: {
     fontSize: 14,
     textAlign: 'center',
     marginHorizontal: 12,
     fontWeight: '500',
+    // Prevent text selection on web
+    ...Platform.select({
+      web: {
+        userSelect: 'none',
+      },
+    }),
   },
 });
