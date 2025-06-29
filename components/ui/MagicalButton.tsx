@@ -76,6 +76,8 @@ export function MagicalButton({
   };
 
   const handlePress = () => {
+    console.log('MagicalButton pressed:', title); // Debug log
+    
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -238,6 +240,8 @@ const styles = StyleSheet.create({
         cursor: 'pointer',
         userSelect: 'none',
         outline: 'none',
+        // Ensure the button is above other elements
+        zIndex: 100,
       },
     }),
   },
