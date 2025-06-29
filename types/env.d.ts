@@ -13,6 +13,8 @@ declare global {
       EXPO_PUBLIC_REVENUECAT_API_KEY: string;
       EXPO_PUBLIC_TAVUS_API_KEY: string;
       TAVUS_API_KEY: string;
+      EXPO_PUBLIC_LINGO_API_KEY: string;
+      EXPO_PUBLIC_LINGO_PROJECT_ID: string;
     }
   }
 }

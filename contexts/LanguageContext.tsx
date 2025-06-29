@@ -1,13 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { I18nProvider } from '@lingui/react';
-import { i18n, changeLanguage, getCurrentLanguage, getStoredLanguage, SUPPORTED_LANGUAGES, isRTL } from '@/lib/i18n';
+import { 
+  lingoService, 
+  t as translate, 
+  getCurrentLanguage, 
+  changeLanguage as changeAppLanguage, 
+  initializeI18n,
+  SUPPORTED_LANGUAGES,
+  isRTL 
+} from '@/lib/lingo';
 
 interface LanguageContextType {
   currentLanguage: string;
   supportedLanguages: typeof SUPPORTED_LANGUAGES;
-  changeLanguage: (locale: string) => void;
+  changeLanguage: (locale: string) => Promise<void>;
   isRTL: boolean;
-  t: (id: string, values?: Record<string, any>) => string;
+  t: (key: string, params?: Record<string, any>) => string;
+  isLoading: boolean;
+  error: string | null;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -15,24 +24,48 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [currentLanguage, setCurrentLanguage] = useState(getCurrentLanguage());
   const [isRTLLayout, setIsRTLLayout] = useState(isRTL(getCurrentLanguage()));
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for stored language preference on mount
-    const storedLanguage = getStoredLanguage();
-    if (storedLanguage && storedLanguage !== currentLanguage) {
-      handleLanguageChange(storedLanguage);
-    }
+    initializeLingo();
   }, []);
 
-  const handleLanguageChange = (locale: string) => {
-    changeLanguage(locale);
-    setCurrentLanguage(locale);
-    setIsRTLLayout(isRTL(locale));
+  const initializeLingo = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      await initializeI18n();
+      
+      const currentLang = getCurrentLanguage();
+      setCurrentLanguage(currentLang);
+      setIsRTLLayout(isRTL(currentLang));
+      
+      console.log('Lingo.dev initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Lingo.dev:', error);
+      setError('Failed to initialize language service');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLanguageChange = async (locale: string) => {
+    try {
+      setError(null);
+      await changeAppLanguage(locale);
+      setCurrentLanguage(locale);
+      setIsRTLLayout(isRTL(locale));
+    } catch (error) {
+      console.error('Failed to change language:', error);
+      setError('Failed to change language');
+    }
   };
 
   // Translation helper function
-  const t = (id: string, values?: Record<string, any>) => {
-    return i18n._(id, values);
+  const t = (key: string, params?: Record<string, any>) => {
+    return translate(key, params);
   };
 
   return (
@@ -43,11 +76,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         changeLanguage: handleLanguageChange,
         isRTL: isRTLLayout,
         t,
+        isLoading,
+        error,
       }}
     >
-      <I18nProvider i18n={i18n}>
-        {children}
-      </I18nProvider>
+      {children}
     </LanguageContext.Provider>
   );
 }

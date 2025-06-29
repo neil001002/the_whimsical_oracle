@@ -14,6 +14,7 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { OracleProvider } from '@/contexts/OracleContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
@@ -62,20 +63,22 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <SubscriptionProvider>
-          <OracleProvider>
-            <VideoOracleProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-              <StatusBar style="light" backgroundColor="#0F0F23" />
-            </VideoOracleProvider>
-          </OracleProvider>
-        </SubscriptionProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <SubscriptionProvider>
+            <OracleProvider>
+              <VideoOracleProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+                <StatusBar style="light" backgroundColor="#0F0F23" />
+              </VideoOracleProvider>
+            </OracleProvider>
+          </SubscriptionProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

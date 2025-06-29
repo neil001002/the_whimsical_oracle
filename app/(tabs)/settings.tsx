@@ -18,17 +18,21 @@ import {
   ChevronRight,
   Mic,
   MessageCircle,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Globe
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
+import { LanguageSelector } from '@/components/ui/LanguageSelector';
 import { ORACLE_PERSONAS } from '@/constants/OraclePersonas';
 
 export default function SettingsScreen() {
   const { colors, fonts, spacing } = useTheme();
+  const { t } = useLanguage();
   const { 
     selectedPersona, 
     userPreferences, 
@@ -51,7 +55,9 @@ export default function SettingsScreen() {
     if (isPlayingVoice) {
       await stopVoice();
     } else {
-      const testText = "Greetings, seeker. This is how your chosen oracle sounds when speaking mystical wisdom.";
+      const testText = t('settings.voice.testMessage', { 
+        persona: selectedPersona.name 
+      }) || "Greetings, seeker. This is how your chosen oracle sounds when speaking mystical wisdom.";
       await playOmenVoice(testText, selectedPersona.voiceStyle);
     }
   };
@@ -67,10 +73,10 @@ export default function SettingsScreen() {
   const renderPersonaSelector = () => (
     <MysticalCard style={styles.sectionCard}>
       <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
-        Oracle Persona
+        {t('settings.sections.persona.title')}
       </Text>
       <Text style={[styles.sectionSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-        Choose your mystical guide
+        {t('settings.sections.persona.subtitle')}
       </Text>
       
       <View style={styles.personaGrid}>
@@ -90,7 +96,7 @@ export default function SettingsScreen() {
               {persona.avatar}
             </Text>
             <Text style={[styles.personaName, { color: colors.text, fontFamily: fonts.body }]}>
-              {persona.name}
+              {t(`personas.${persona.id}.name`) || persona.name}
             </Text>
           </TouchableOpacity>
         ))}
@@ -98,10 +104,20 @@ export default function SettingsScreen() {
     </MysticalCard>
   );
 
+  const renderLanguageSettings = () => (
+    <MysticalCard style={styles.sectionCard}>
+      <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
+        {t('settings.sections.language.title')}
+      </Text>
+      
+      <LanguageSelector style={styles.languageSelector} />
+    </MysticalCard>
+  );
+
   const renderVoiceSettings = () => (
     <MysticalCard style={styles.sectionCard}>
       <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
-        Voice & Communication
+        {t('settings.sections.voice.title')}
       </Text>
       
       <View style={styles.preferenceItem}>
@@ -109,10 +125,10 @@ export default function SettingsScreen() {
           <Mic color={colors.accent} size={20} />
           <View style={styles.preferenceText}>
             <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
-              Voice Narration
+              {t('settings.sections.voice.voiceNarration.title')}
             </Text>
             <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Spoken oracle wisdom
+              {t('settings.sections.voice.voiceNarration.subtitle')}
             </Text>
           </View>
         </View>
@@ -129,10 +145,10 @@ export default function SettingsScreen() {
           <MessageCircle color={colors.accent} size={20} />
           <View style={styles.preferenceText}>
             <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
-              Real-time Voice Chat
+              {t('settings.sections.voice.realTimeChat.title')}
             </Text>
             <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Interactive voice conversations
+              {t('settings.sections.voice.realTimeChat.subtitle')}
             </Text>
           </View>
         </View>
@@ -147,12 +163,12 @@ export default function SettingsScreen() {
       {/* Service Status Information */}
       <View style={styles.serviceStatusContainer}>
         <Text style={[styles.serviceStatusTitle, { color: colors.text, fontFamily: fonts.body }]}>
-          Voice Service Status:
+          {t('settings.sections.voice.serviceStatus')}
         </Text>
         
         <View style={styles.serviceStatusItem}>
           <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            LiveKit Voice Chat: 
+            {t('settings.sections.voice.liveKitStatus')} 
           </Text>
           <Text style={[
             styles.serviceStatusValue, 
@@ -161,13 +177,13 @@ export default function SettingsScreen() {
               fontFamily: fonts.body 
             }
           ]}>
-            {isLiveKitAvailable ? 'Available' : 'Requires Custom Build'}
+            {isLiveKitAvailable ? t('settings.sections.voice.available') : t('settings.sections.voice.requiresCustomBuild')}
           </Text>
         </View>
         
         <View style={styles.serviceStatusItem}>
           <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            Voice TTS: 
+            {t('settings.sections.voice.ttsStatus')} 
           </Text>
           <Text style={[
             styles.serviceStatusValue, 
@@ -176,7 +192,7 @@ export default function SettingsScreen() {
               fontFamily: fonts.body 
             }
           ]}>
-            {isVoiceServiceAvailable ? 'Available' : 'Limited'}
+            {isVoiceServiceAvailable ? t('settings.sections.voice.available') : t('settings.sections.voice.limited')}
           </Text>
         </View>
       </View>
@@ -184,13 +200,13 @@ export default function SettingsScreen() {
       {userPreferences.voiceEnabled && (
         <View style={styles.voiceTestContainer}>
           <MagicalButton
-            title={isPlayingVoice ? "Stop Voice Test" : "Test Voice"}
+            title={isPlayingVoice ? t('settings.sections.voice.stopVoice') : t('settings.sections.voice.testVoice')}
             onPress={testVoice}
             variant="secondary"
             size="small"
           />
           <Text style={[styles.voiceTestNote, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            Test how your selected oracle sounds
+            {t('settings.sections.voice.testNote')}
           </Text>
         </View>
       )}
@@ -198,7 +214,7 @@ export default function SettingsScreen() {
       {userPreferences.realTimeChatEnabled && isLiveKitAvailable && (
         <View style={styles.voiceChatContainer}>
           <MagicalButton
-            title={isVoiceChatConnected ? "Disconnect Voice Chat" : "Connect Voice Chat"}
+            title={isVoiceChatConnected ? t('settings.sections.voice.disconnectVoiceChat') : t('settings.sections.voice.connectVoiceChat')}
             onPress={toggleVoiceChat}
             variant={isVoiceChatConnected ? "secondary" : "primary"}
             size="small"
@@ -206,7 +222,7 @@ export default function SettingsScreen() {
           {isVoiceChatConnected && (
             <View style={styles.voiceChatStatus}>
               <Text style={[styles.voiceChatStatusText, { color: colors.accent, fontFamily: fonts.body }]}>
-                🎙️ Voice chat connected
+                {t('settings.sections.voice.voiceChatConnected')}
               </Text>
             </View>
           )}
@@ -224,7 +240,7 @@ export default function SettingsScreen() {
       {!isLiveKitAvailable && userPreferences.realTimeChatEnabled && (
         <View style={styles.warningContainer}>
           <Text style={[styles.warningText, { color: colors.warning, fontFamily: fonts.body }]}>
-            ⚠️ Voice chat requires a custom development build with WebRTC support. Currently using Web Speech API for basic voice features.
+            {t('settings.sections.voice.warning')}
           </Text>
         </View>
       )}
@@ -234,7 +250,7 @@ export default function SettingsScreen() {
   const renderPreferences = () => (
     <MysticalCard style={styles.sectionCard}>
       <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
-        Mystical Preferences
+        {t('settings.sections.preferences.title')}
       </Text>
       
       <View style={styles.preferenceItem}>
@@ -242,10 +258,10 @@ export default function SettingsScreen() {
           <Volume2 color={colors.accent} size={20} />
           <View style={styles.preferenceText}>
             <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
-              Sound Effects
+              {t('settings.sections.preferences.soundEffects.title')}
             </Text>
             <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Mystical audio feedback
+              {t('settings.sections.preferences.soundEffects.subtitle')}
             </Text>
           </View>
         </View>
@@ -262,10 +278,10 @@ export default function SettingsScreen() {
           <Vibrate color={colors.accent} size={20} />
           <View style={styles.preferenceText}>
             <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
-              Haptic Feedback
+              {t('settings.sections.preferences.hapticFeedback.title')}
             </Text>
             <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Tactile mystical sensations
+              {t('settings.sections.preferences.hapticFeedback.subtitle')}
             </Text>
           </View>
         </View>
@@ -284,7 +300,7 @@ export default function SettingsScreen() {
       <View style={styles.subscriptionHeader}>
         <Crown color={colors.accent} size={24} />
         <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
-          Subscription Status
+          {t('settings.sections.subscription.title')}
         </Text>
       </View>
       
@@ -294,15 +310,15 @@ export default function SettingsScreen() {
         </Text>
         <Text style={[styles.subscriptionDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
           {userPreferences.subscriptionTier === 'free' 
-            ? 'Access to basic oracle features'
-            : 'Full access to all mystical powers'
+            ? t('settings.sections.subscription.description.free')
+            : t('settings.sections.subscription.description.premium')
           }
         </Text>
       </View>
 
       {userPreferences.subscriptionTier === 'free' && (
         <MagicalButton
-          title="Unlock Mystical Powers"
+          title={t('settings.sections.subscription.upgrade')}
           onPress={() => {
             // Navigate to premium screen
             console.log('Navigate to premium');
@@ -322,10 +338,10 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text, fontFamily: fonts.title }]}>
-            Mystical Settings
+            {t('settings.title')}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            Configure your oracle experience
+            {t('settings.subtitle')}
           </Text>
         </View>
 
@@ -333,6 +349,7 @@ export default function SettingsScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {renderLanguageSettings()}
           {renderPersonaSelector()}
           {renderVoiceSettings()}
           {renderPreferences()}
@@ -377,6 +394,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 16,
     opacity: 0.8,
+  },
+  languageSelector: {
+    marginTop: 8,
   },
   personaGrid: {
     flexDirection: 'row',
