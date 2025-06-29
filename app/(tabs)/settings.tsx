@@ -144,39 +144,15 @@ export default function SettingsScreen() {
         />
       </View>
 
-      <View style={styles.preferenceItem}>
-        <View style={styles.preferenceLeft}>
-          <SettingsIcon color={colors.accent} size={20} />
-          <View style={styles.preferenceText}>
-            <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
-              Voice Provider
-            </Text>
-            <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              {userPreferences.voiceProvider === 'livekit' ? 'LiveKit (Primary)' : 'Eleven Labs'}
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          onPress={() => updatePreferences({ 
-            voiceProvider: userPreferences.voiceProvider === 'livekit' ? 'elevenlabs' : 'livekit' 
-          })}
-          style={[styles.providerButton, { borderColor: colors.accent }]}
-        >
-          <Text style={[styles.providerButtonText, { color: colors.accent, fontFamily: fonts.body }]}>
-            Switch
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Service Status Information */}
       <View style={styles.serviceStatusContainer}>
         <Text style={[styles.serviceStatusTitle, { color: colors.text, fontFamily: fonts.body }]}>
-          Service Status:
+          Voice Service Status:
         </Text>
         
         <View style={styles.serviceStatusItem}>
           <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            LiveKit: 
+            LiveKit Voice Chat: 
           </Text>
           <Text style={[
             styles.serviceStatusValue, 
@@ -248,7 +224,7 @@ export default function SettingsScreen() {
       {!isLiveKitAvailable && userPreferences.realTimeChatEnabled && (
         <View style={styles.warningContainer}>
           <Text style={[styles.warningText, { color: colors.warning, fontFamily: fonts.body }]}>
-            ⚠️ Voice chat requires a custom development build with WebRTC support. Currently using fallback voice features.
+            ⚠️ Voice chat requires a custom development build with WebRTC support. Currently using Web Speech API for basic voice features.
           </Text>
         </View>
       )}
@@ -448,16 +424,6 @@ const styles = StyleSheet.create({
   preferenceSubtitle: {
     fontSize: 12,
     opacity: 0.7,
-  },
-  providerButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderRadius: 16,
-  },
-  providerButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   serviceStatusContainer: {
     marginTop: 16,

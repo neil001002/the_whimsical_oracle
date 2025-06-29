@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
-import { ELEVEN_LABS_VOICE_MAP } from '@/constants/ElevenLabsVoices';
 import { getLiveKitService, LiveKitVoiceService } from '@/services/LiveKitService';
 
 interface OraclePersona {
@@ -47,7 +46,6 @@ interface UserPreferences {
   soundEnabled: boolean;
   hapticsEnabled: boolean;
   voiceEnabled: boolean;
-  voiceProvider: 'livekit' | 'elevenlabs';
   realTimeChatEnabled: boolean;
 }
 
@@ -86,7 +84,6 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     soundEnabled: true,
     hapticsEnabled: true,
     voiceEnabled: true,
-    voiceProvider: 'livekit', // Default to LiveKit as requested
     realTimeChatEnabled: true,
   });
   const [omenHistory, setOmenHistory] = useState<WhimsicalOmen[]>([]);
@@ -101,8 +98,6 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   const [voiceChatError, setVoiceChatError] = useState<string | null>(null);
   const [isLiveKitAvailable, setIsLiveKitAvailable] = useState(false);
   
-  const soundObjectRef = useRef<Audio.Sound | null>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const liveKitServiceRef = useRef<LiveKitVoiceService | null>(null);
 
   useEffect(() => {
@@ -121,18 +116,6 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     }
 
     return () => {
-      // Cleanup audio when component unmounts
-      if (Platform.OS === 'web') {
-        if (audioElementRef.current) {
-          audioElementRef.current.pause();
-          audioElementRef.current = null;
-        }
-      } else {
-        if (soundObjectRef.current) {
-          soundObjectRef.current.unloadAsync();
-        }
-      }
-      
       // Cleanup LiveKit
       if (liveKitServiceRef.current) {
         liveKitServiceRef.current.disconnectVoiceSession();
@@ -177,6 +160,12 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
           // Handle received audio data for real-time chat
           console.log('Received audio data:', audioData.byteLength);
         },
+        onSpeechStarted: () => {
+          setIsPlayingVoice(true);
+        },
+        onSpeechEnded: () => {
+          setIsPlayingVoice(false);
+        },
       });
     } catch (error) {
       console.error('Failed to initialize LiveKit:', error);
@@ -202,10 +191,9 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
       if (prefsData) {
         const prefs = JSON.parse(prefsData);
-        // Ensure new properties have defaults and prefer LiveKit
+        // Ensure new properties have defaults
         const updatedPrefs = {
           ...prefs,
-          voiceProvider: prefs.voiceProvider || 'livekit',
           realTimeChatEnabled: prefs.realTimeChatEnabled !== undefined ? prefs.realTimeChatEnabled : true,
         };
         setUserPreferences(updatedPrefs);
@@ -250,7 +238,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       setIsPlayingVoice(false);
       
       // Stop LiveKit TTS if available and being used
-      if (userPreferences.voiceProvider === 'livekit' && liveKitServiceRef.current && isLiveKitAvailable) {
+      if (liveKitServiceRef.current && isLiveKitAvailable) {
         await liveKitServiceRef.current.stopSpeaking();
       }
       
@@ -258,214 +246,8 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       if (Platform.OS === 'web' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
-      
-      // Stop Eleven Labs audio if being used
-      if (Platform.OS === 'web') {
-        if (audioElementRef.current) {
-          audioElementRef.current.pause();
-          audioElementRef.current = null;
-        }
-      } else {
-        if (soundObjectRef.current) {
-          await soundObjectRef.current.stopAsync();
-          await soundObjectRef.current.unloadAsync();
-          soundObjectRef.current = null;
-        }
-      }
     } catch (error) {
       console.error('Error stopping voice:', error);
-    }
-  };
-
-  const playOmenVoiceWithLiveKit = async (text: string, personaVoiceStyle: string) => {
-    // For web platform, use Web Speech API directly
-    if (Platform.OS === 'web' && 'speechSynthesis' in window) {
-      return new Promise<void>((resolve, reject) => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        // Apply voice configuration
-        const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
-        utterance.rate = voiceConfig.rate;
-        utterance.pitch = voiceConfig.pitch;
-        utterance.volume = voiceConfig.volume;
-        
-        // Try to find a suitable voice
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(voice => 
-          voice.name.toLowerCase().includes('female') || 
-          voice.name.toLowerCase().includes('samantha') ||
-          voice.name.toLowerCase().includes('alex')
-        );
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-        }
-
-        utterance.onend = () => {
-          setIsPlayingVoice(false);
-          resolve();
-        };
-
-        utterance.onerror = (event) => {
-          setIsPlayingVoice(false);
-          reject(new Error(`Speech synthesis error: ${event.error}`));
-        };
-
-        setIsPlayingVoice(true);
-        window.speechSynthesis.speak(utterance);
-      });
-    }
-    
-    // For mobile platforms, check if LiveKit is available
-    if (!liveKitServiceRef.current || !isLiveKitAvailable) {
-      throw new Error('LiveKit service not available on this platform');
-    }
-
-    try {
-      // Configure voice based on persona
-      const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
-      
-      // For mobile platforms with LiveKit available
-      const status = liveKitServiceRef.current.getSessionStatus();
-      if (!status.isConnected) {
-        const roomName = `oracle-tts-${Date.now()}`;
-        const participantName = `oracle-${selectedPersona.id}`;
-        await liveKitServiceRef.current.connectToVoiceSession(roomName, participantName);
-      }
-
-      await liveKitServiceRef.current.speakText(text, voiceConfig);
-    } catch (error) {
-      console.error('Error with LiveKit TTS:', error);
-      throw error;
-    }
-  };
-
-  const playOmenVoiceWithElevenLabs = async (text: string, personaVoiceStyle: string) => {
-    const voiceId = ELEVEN_LABS_VOICE_MAP[personaVoiceStyle];
-    if (!voiceId) {
-      throw new Error(`No Eleven Labs voice ID found for persona voice style: ${personaVoiceStyle}`);
-    }
-
-    // Call the API route
-    const response = await fetch('/api/elevenlabs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text, voiceId }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      
-      // Handle service unavailable errors more gracefully
-      if (errorData.isServiceUnavailable) {
-        setIsVoiceServiceAvailable(false);
-        throw new Error('Voice service is currently unavailable due to API limitations. This is typically due to free tier restrictions or unusual activity detection. Consider upgrading to a paid plan or try again later.');
-      }
-      
-      throw new Error(errorData.userMessage || 'Failed to generate speech');
-    }
-
-    const { audio: base64Audio } = await response.json();
-    if (!base64Audio) {
-      throw new Error('No audio data received');
-    }
-
-    // Platform-specific audio playback
-    if (Platform.OS === 'web') {
-      const audioBlob = new Blob([
-        Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0))
-      ], { type: 'audio/mpeg' });
-      
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new window.Audio(audioUrl);
-      
-      return new Promise<void>((resolve, reject) => {
-        audio.onended = () => {
-          setIsPlayingVoice(false);
-          URL.revokeObjectURL(audioUrl);
-          resolve();
-        };
-        
-        audio.onerror = () => {
-          setIsPlayingVoice(false);
-          URL.revokeObjectURL(audioUrl);
-          reject(new Error('Failed to play audio'));
-        };
-        
-        audioElementRef.current = audio;
-        audio.play().catch(reject);
-      });
-    } else {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/mpeg;base64,${base64Audio}` },
-        { shouldPlay: true }
-      );
-      
-      soundObjectRef.current = sound;
-      
-      return new Promise<void>((resolve, reject) => {
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setIsPlayingVoice(false);
-            resolve();
-          }
-          if (status.isLoaded && status.error) {
-            setIsPlayingVoice(false);
-            reject(new Error('Audio playback error'));
-          }
-        });
-        
-        sound.playAsync().catch(reject);
-      });
-    }
-  };
-
-  const playOmenVoice = async (text: string, personaVoiceStyle: string) => {
-    if (!userPreferences.voiceEnabled) {
-      return;
-    }
-
-    // Clear any previous errors
-    setVoiceError(null);
-
-    // Stop any currently playing audio
-    await stopVoice();
-
-    try {
-      setIsPlayingVoice(true);
-      
-      // Try LiveKit first if it's the preferred provider and available
-      if (userPreferences.voiceProvider === 'livekit') {
-        if (Platform.OS === 'web' && 'speechSynthesis' in window) {
-          // Use Web Speech API for web platform
-          await playOmenVoiceWithLiveKit(text, personaVoiceStyle);
-          setIsVoiceServiceAvailable(true);
-          return;
-        } else if (isLiveKitAvailable && Platform.OS !== 'web') {
-          // Use LiveKit for mobile platforms
-          await playOmenVoiceWithLiveKit(text, personaVoiceStyle);
-          setIsVoiceServiceAvailable(true);
-          return;
-        } else {
-          console.log('LiveKit not available, falling back to Eleven Labs...');
-        }
-      }
-      
-      // Use Eleven Labs (either as primary or fallback)
-      await playOmenVoiceWithElevenLabs(text, personaVoiceStyle);
-      setIsVoiceServiceAvailable(true);
-      
-    } catch (error) {
-      console.error('Error playing omen voice:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setVoiceError(`Voice playback failed: ${errorMessage}`);
-      setIsPlayingVoice(false);
-      
-      // Only mark service as unavailable for specific API errors
-      if (errorMessage.includes('API limitations') || errorMessage.includes('unusual activity')) {
-        setIsVoiceServiceAvailable(false);
-      }
     }
   };
 
@@ -484,6 +266,83 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
         return { rate: 0.85, pitch: 0.95, volume: 0.8 };
       default:
         return { rate: 1.0, pitch: 1.0, volume: 0.8 };
+    }
+  };
+
+  const playOmenVoice = async (text: string, personaVoiceStyle: string) => {
+    if (!userPreferences.voiceEnabled) {
+      return;
+    }
+
+    // Clear any previous errors
+    setVoiceError(null);
+
+    // Stop any currently playing audio
+    await stopVoice();
+
+    try {
+      setIsPlayingVoice(true);
+      
+      // Use Web Speech API for web platform
+      if (Platform.OS === 'web' && 'speechSynthesis' in window) {
+        return new Promise<void>((resolve, reject) => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          
+          // Apply voice configuration
+          const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
+          utterance.rate = voiceConfig.rate;
+          utterance.pitch = voiceConfig.pitch;
+          utterance.volume = voiceConfig.volume;
+          
+          // Try to find a suitable voice
+          const voices = window.speechSynthesis.getVoices();
+          const preferredVoice = voices.find(voice => 
+            voice.name.toLowerCase().includes('female') || 
+            voice.name.toLowerCase().includes('samantha') ||
+            voice.name.toLowerCase().includes('alex')
+          );
+          if (preferredVoice) {
+            utterance.voice = preferredVoice;
+          }
+
+          utterance.onend = () => {
+            setIsPlayingVoice(false);
+            resolve();
+          };
+
+          utterance.onerror = (event) => {
+            setIsPlayingVoice(false);
+            reject(new Error(`Speech synthesis error: ${event.error}`));
+          };
+
+          window.speechSynthesis.speak(utterance);
+        });
+      }
+      
+      // For mobile platforms, check if LiveKit is available
+      if (!liveKitServiceRef.current || !isLiveKitAvailable) {
+        throw new Error('Voice service not available on this platform');
+      }
+
+      // Configure voice based on persona
+      const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
+      
+      // For mobile platforms with LiveKit available
+      const status = liveKitServiceRef.current.getSessionStatus();
+      if (!status.isConnected) {
+        const roomName = `oracle-tts-${Date.now()}`;
+        const participantName = `oracle-${selectedPersona.id}`;
+        await liveKitServiceRef.current.connectToVoiceSession(roomName, participantName);
+      }
+
+      await liveKitServiceRef.current.speakText(text, voiceConfig);
+      setIsVoiceServiceAvailable(true);
+      
+    } catch (error) {
+      console.error('Error playing omen voice:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setVoiceError(`Voice playback failed: ${errorMessage}`);
+      setIsPlayingVoice(false);
     }
   };
 
