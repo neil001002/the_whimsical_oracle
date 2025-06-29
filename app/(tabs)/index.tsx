@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Volume2, VolumeX, Crown, Sparkles } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
@@ -20,7 +21,9 @@ import { VoiceChatButton } from '@/components/ui/VoiceChatButton';
 import { NotificationCard } from '@/components/ui/NotificationCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { OrnateFrame } from '@/components/ui/OrnateFrame';
+import { SubscriptionBanner } from '@/components/subscription/SubscriptionBanner';
 import { WhimsicalOmen, OmenCategory } from '@/types';
+import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +40,7 @@ export default function HomeScreen() {
     isVoiceServiceAvailable,
     omenHistory
   } = useOracle();
+  const { subscriptionStatus, canAccessPremiumFeatures } = useSubscription();
   const [currentOmen, setCurrentOmen] = useState<WhimsicalOmen | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showUpgradeNotification, setShowUpgradeNotification] = useState(false);
@@ -48,8 +52,8 @@ export default function HomeScreen() {
     return omenDate.toDateString() === today.toDateString();
   }).length;
 
-  const dailyLimit = userPreferences.subscriptionTier === 'free' ? 3 : Infinity;
-  const hasReachedLimit = dailyReadings >= dailyLimit && userPreferences.subscriptionTier === 'free';
+  const dailyLimit = subscriptionStatus.tier === 'free' ? 3 : Infinity;
+  const hasReachedLimit = dailyReadings >= dailyLimit && subscriptionStatus.tier === 'free';
 
   const generateOmen = async () => {
     console.log('Generate omen button pressed!'); // Debug log
@@ -70,7 +74,7 @@ export default function HomeScreen() {
       const symbols = ['🌟', '🔮', '🌙', '⚡', '🦋', '🕊️', '🌸', '🔥', '💎', '🌊', '✨', '🌌', '🔯', '🌺', '🦄'];
       
       // Enhanced phrases based on subscription tier
-      const crypticPhrases = userPreferences.subscriptionTier === 'free' ? [
+      const crypticPhrases = subscriptionStatus.tier === 'free' ? [
         'The digital ravens whisper of unexpected connections',
         'Silver threads weave through the fabric of tomorrow',
         'Ancient wisdom flows through modern channels',
@@ -87,7 +91,7 @@ export default function HomeScreen() {
         'Divine frequencies harmonize with your spiritual essence',
       ];
 
-      const interpretations = userPreferences.subscriptionTier === 'free' ? [
+      const interpretations = subscriptionStatus.tier === 'free' ? [
         'A message from beyond the veil suggests transformation approaches',
         'The universe conspires to bring clarity to confusion',
         'Hidden opportunities emerge from unexpected places',
@@ -104,7 +108,7 @@ export default function HomeScreen() {
         'Multidimensional energies converge to support your highest good',
       ];
 
-      const advice = userPreferences.subscriptionTier === 'free' ? [
+      const advice = subscriptionStatus.tier === 'free' ? [
         'Trust your intuition and take the first step forward',
         'Pay attention to synchronicities appearing in your life',
         'Release what no longer serves your highest good',
@@ -156,7 +160,7 @@ export default function HomeScreen() {
   };
 
   const renderDailyProgress = () => {
-    if (userPreferences.subscriptionTier !== 'free') return null;
+    if (subscriptionStatus.tier !== 'free') return null;
 
     return (
       <MysticalCard variant="ethereal" style={styles.progressCard}>
@@ -209,6 +213,14 @@ export default function HomeScreen() {
             </Text>
           </View>
 
+          {/* Subscription Banner */}
+          {!canAccessPremiumFeatures && (
+            <SubscriptionBanner
+              onUpgrade={() => router.push('/(tabs)/premium')}
+              message="Unlock unlimited mystical wisdom and premium features!"
+            />
+          )}
+
           {/* Upgrade Notification */}
           {showUpgradeNotification && (
             <NotificationCard
@@ -219,7 +231,7 @@ export default function HomeScreen() {
               actionText="Unlock Mystical Powers"
               onAction={() => {
                 setShowUpgradeNotification(false);
-                // Navigate to premium screen
+                router.push('/(tabs)/premium');
               }}
             />
           )}
@@ -255,11 +267,11 @@ export default function HomeScreen() {
                 <Text style={[styles.personaDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
                   {selectedPersona.description}
                 </Text>
-                {userPreferences.subscriptionTier !== 'free' && (
+                {subscriptionStatus.tier !== 'free' && (
                   <View style={[styles.premiumBadge, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
                     <Crown color={colors.accent} size={16} />
                     <Text style={[styles.premiumText, { color: colors.accent, fontFamily: fonts.body }]}>
-                      {userPreferences.subscriptionTier.toUpperCase()} MYSTIC
+                      {subscriptionStatus.tier.toUpperCase()} MYSTIC
                     </Text>
                   </View>
                 )}
@@ -394,6 +406,7 @@ export default function HomeScreen() {
             {hasReachedLimit && (
               <TouchableOpacity 
                 style={[styles.upgradeHint, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}
+                onPress={() => router.push('/(tabs)/premium')}
                 accessible={true}
                 accessibilityRole="button"
                 accessibilityLabel="Unlock unlimited mystical wisdom"
