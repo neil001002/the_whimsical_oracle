@@ -17,6 +17,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { OracleProvider } from '@/contexts/OracleContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+import { VideoOracleProvider } from '@/contexts/VideoOracleContext';
 
 // Only register WebRTC globals on supported platforms and when available
 if (Platform.OS !== 'web') {
@@ -64,12 +65,14 @@ export default function RootLayout() {
       <AuthProvider>
         <SubscriptionProvider>
           <OracleProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-            <StatusBar style="light" backgroundColor="#0F0F23" />
+            <VideoOracleProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+              <StatusBar style="light" backgroundColor="#0F0F23" />
+            </VideoOracleProvider>
           </OracleProvider>
         </SubscriptionProvider>
       </AuthProvider>

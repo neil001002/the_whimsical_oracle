@@ -49,6 +49,22 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="video-oracle"
+        options={{
+          title: 'Video Oracle',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Image
+              source={require('../../assets/icons/Video_icon.PNG')}
+              style={{
+                width: 36,
+                height: 36,
+              }}
+              resizeMode="contain"
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="history"
         options={{
           title: 'History',

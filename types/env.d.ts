@@ -11,6 +11,8 @@ declare global {
       EXPO_PUBLIC_SUPABASE_ANON_KEY: string;
       SUPABASE_SERVICE_ROLE_KEY: string;
       EXPO_PUBLIC_REVENUECAT_API_KEY: string;
+      EXPO_PUBLIC_TAVUS_API_KEY: string;
+      TAVUS_API_KEY: string;
     }
   }
 }
