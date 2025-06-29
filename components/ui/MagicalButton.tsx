@@ -240,7 +240,12 @@ const styles = StyleSheet.create({
         cursor: 'pointer',
         userSelect: 'none',
         // Ensure the button is above other elements
-        zIndex: 100,
+        zIndex: 1000,
+        // Remove any conflicting outline styles
+        outlineWidth: 0,
+        outlineStyle: 'none',
+        // Ensure proper display
+        display: 'flex',
       },
     }),
   },
@@ -265,6 +270,9 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         zIndex: 1,
+        // Remove any conflicting styles
+        outlineWidth: 0,
+        outlineStyle: 'none',
       },
     }),
   },
@@ -289,6 +297,8 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         userSelect: 'none',
+        // Ensure text doesn't interfere with button clicks
+        pointerEvents: 'none',
       },
     }),
   },
@@ -298,6 +308,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         cursor: 'not-allowed',
+        pointerEvents: 'none',
       },
     }),
   },
