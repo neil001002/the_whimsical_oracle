@@ -133,8 +133,18 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
         console.log('LiveKit voice chat not available on this platform or build configuration');
         setVoiceChatError('Voice chat requires a custom development build. LiveKit features are disabled.');
         
-        // Check if web speech API is available as fallback for TTS
-        if (Platform.OS === 'web' && 'speechSynthesis' in window) {
+        // Check if native speech or web speech API is available as fallback for TTS
+        if (Platform.OS === 'android' || Platform.OS === 'ios') {
+          try {
+            // Check if expo-speech is available
+            require('expo-speech');
+            console.log('Using Expo Speech API for voice features');
+            setIsVoiceServiceAvailable(true);
+          } catch (error) {
+            console.log('Expo Speech not available');
+            setIsVoiceServiceAvailable(false);
+          }
+        } else if (Platform.OS === 'web' && 'speechSynthesis' in window) {
           console.log('Using Web Speech API as fallback for voice features');
           setIsVoiceServiceAvailable(true);
         } else {
@@ -172,8 +182,18 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       setVoiceChatError('Failed to initialize voice chat service');
       setIsLiveKitAvailable(false);
       
-      // Check if web speech API is available as fallback
-      if (Platform.OS === 'web' && 'speechSynthesis' in window) {
+      // Check if native speech or web speech API is available as fallback
+      if (Platform.OS === 'android' || Platform.OS === 'ios') {
+        try {
+          // Check if expo-speech is available
+          require('expo-speech');
+          console.log('Using Expo Speech API for voice features');
+          setIsVoiceServiceAvailable(true);
+        } catch (speechError) {
+          console.log('Expo Speech not available');
+          setIsVoiceServiceAvailable(false);
+        }
+      } else if (Platform.OS === 'web' && 'speechSynthesis' in window) {
         console.log('Using Web Speech API as fallback for voice features');
         setIsVoiceServiceAvailable(true);
       } else {
@@ -242,6 +262,16 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
         await liveKitServiceRef.current.stopSpeaking();
       }
       
+      // Stop native speech on mobile platforms
+      if (Platform.OS === 'android' || Platform.OS === 'ios') {
+        try {
+          const { Speech } = require('expo-speech');
+          await Speech.stop();
+        } catch (error) {
+          console.log('Expo Speech not available for stopping');
+        }
+      }
+      
       // Stop Web Speech API if being used
       if (Platform.OS === 'web' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -276,7 +306,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
     // Check if voice service is available - if not, set error and return gracefully
     if (!isVoiceServiceAvailable) {
-      setVoiceError('Voice service is not available on this platform. Voice features require either Web Speech API (web) or LiveKit (mobile with custom build).');
+      setVoiceError('Voice service is not available on this platform. Voice features require either Web Speech API (web) or Expo Speech (mobile).');
       return;
     }
 
@@ -288,6 +318,39 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setIsPlayingVoice(true);
+      
+      // Use native speech for mobile platforms
+      if (Platform.OS === 'android' || Platform.OS === 'ios') {
+        try {
+          const { Speech } = require('expo-speech');
+          
+          // Apply voice configuration
+          const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
+          
+          const options = {
+            rate: voiceConfig.rate,
+            pitch: voiceConfig.pitch,
+            volume: voiceConfig.volume,
+            language: 'en-US',
+            onDone: () => {
+              setIsPlayingVoice(false);
+            },
+            onError: (error: any) => {
+              console.error('Speech error:', error);
+              setIsPlayingVoice(false);
+              setVoiceError(`Speech synthesis error: ${error}`);
+            },
+          };
+
+          await Speech.speak(text, options);
+          return;
+        } catch (error) {
+          console.error('Expo Speech not available:', error);
+          setVoiceError('Native speech synthesis not available on this device');
+          setIsPlayingVoice(false);
+          return;
+        }
+      }
       
       // Use Web Speech API for web platform
       if (Platform.OS === 'web' && 'speechSynthesis' in window) {
@@ -325,7 +388,7 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
         });
       }
       
-      // For mobile platforms with LiveKit available
+      // If LiveKit is available, try using it as a fallback
       if (liveKitServiceRef.current && isLiveKitAvailable) {
         // Configure voice based on persona
         const voiceConfig = getVoiceConfigForPersona(personaVoiceStyle);
@@ -339,7 +402,11 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
         await liveKitServiceRef.current.speakText(text, voiceConfig);
         setIsVoiceServiceAvailable(true);
+        return;
       }
+      
+      // If no voice service is available
+      throw new Error('No voice synthesis service available on this platform');
       
     } catch (error) {
       console.error('Error playing omen voice:', error);
