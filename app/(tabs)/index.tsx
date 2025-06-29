@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
     // Ensure proper spacing and z-index for web
     ...Platform.select({
       web: {
-        zIndex: 10,
+        zIndex: 100,
         position: 'relative',
       },
     }),
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         position: 'relative',
-        zIndex: 10,
+        zIndex: 100,
       },
     }),
   },
@@ -698,6 +698,7 @@ const styles = StyleSheet.create({
         cursor: 'pointer',
         userSelect: 'none',
         outlineWidth: 0,
+        outlineStyle: 'none',
       },
     }),
   },
