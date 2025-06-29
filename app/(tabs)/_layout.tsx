@@ -6,6 +6,7 @@ import { Image } from 'react-native';
 import HomePng from '../../assets/icons/Home_icon.png';
 import HistoryPng from '../../assets/icons/History_icon.png';
 import SettingsPng from '../../assets/icons/Settings_icon.png';
+import PremiumPng from '../../assets/icons/Premium_icon.PNG';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -19,7 +20,6 @@ export default function TabsLayout() {
           borderTopColor: colors.glassStrong,
           borderTopWidth: 1,
           height: 75,
-          // paddingBottom: 20,
           paddingTop: 10,
         },
         tabBarActiveTintColor: colors.accent,
@@ -54,6 +54,22 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size, focused }) => (
             <Image
               source={HistoryPng}
+              style={{
+                width: 36,
+                height: 36,
+              }}
+              resizeMode="contain"
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="premium"
+        options={{
+          title: 'Premium',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Image
+              source={PremiumPng}
               style={{
                 width: 36,
                 height: 36,

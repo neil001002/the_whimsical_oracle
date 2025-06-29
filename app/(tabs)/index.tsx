@@ -9,13 +9,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Volume2, VolumeX } from 'lucide-react-native';
+import { Volume2, VolumeX, Crown } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
 import { VoiceChatButton } from '@/components/ui/VoiceChatButton';
+import { NotificationCard } from '@/components/ui/NotificationCard';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import { WhimsicalOmen, OmenCategory } from '@/types';
 
 const { width } = Dimensions.get('window');
@@ -30,12 +32,29 @@ export default function HomeScreen() {
     stopVoice, 
     isPlayingVoice,
     voiceError,
-    isVoiceServiceAvailable
+    isVoiceServiceAvailable,
+    omenHistory
   } = useOracle();
   const [currentOmen, setCurrentOmen] = useState<WhimsicalOmen | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showUpgradeNotification, setShowUpgradeNotification] = useState(false);
+
+  // Check if user has reached daily limit (free tier)
+  const dailyReadings = omenHistory.filter(omen => {
+    const today = new Date();
+    const omenDate = new Date(omen.timestamp);
+    return omenDate.toDateString() === today.toDateString();
+  }).length;
+
+  const dailyLimit = userPreferences.subscriptionTier === 'free' ? 3 : Infinity;
+  const hasReachedLimit = dailyReadings >= dailyLimit && userPreferences.subscriptionTier === 'free';
 
   const generateOmen = async () => {
+    if (hasReachedLimit) {
+      setShowUpgradeNotification(true);
+      return;
+    }
+
     setIsGenerating(true);
     
     // Stop any currently playing voice
@@ -45,26 +64,42 @@ export default function HomeScreen() {
     setTimeout(async () => {
       const categories: OmenCategory[] = ['career', 'relationships', 'health', 'creativity', 'finance', 'growth'];
       const symbols = ['🌟', '🔮', '🌙', '⚡', '🦋', '🕊️', '🌸', '🔥', '💎', '🌊'];
-      const crypticPhrases = [
+      
+      // Enhanced phrases based on subscription tier
+      const crypticPhrases = userPreferences.subscriptionTier === 'free' ? [
         'The digital ravens whisper of unexpected connections',
         'Silver threads weave through the fabric of tomorrow',
         'Ancient wisdom flows through modern channels',
-        'The cosmic dance reveals hidden patterns',
-        'Stars align to illuminate forgotten paths',
+      ] : [
+        'The cosmic symphony resonates with your soul\'s deepest yearnings',
+        'Ethereal guardians dance around the threads of your destiny',
+        'The universe conspires to unveil the sacred mysteries within',
+        'Celestial energies align to illuminate your path forward',
+        'The ancient ones speak through the veil of time and space',
       ];
-      const interpretations = [
+
+      const interpretations = userPreferences.subscriptionTier === 'free' ? [
         'A message from beyond the veil suggests transformation approaches',
         'The universe conspires to bring clarity to confusion',
         'Hidden opportunities emerge from unexpected places',
-        'Past wisdom illuminates present challenges',
-        'New beginnings await those who trust the process',
+      ] : [
+        'The cosmic forces have aligned to reveal a profound truth about your journey',
+        'Your spiritual guides are orchestrating synchronicities to guide your path',
+        'The universe is preparing to bestow upon you a gift of divine insight',
+        'Ancient wisdom keepers are opening doorways to new possibilities',
+        'The celestial realm is weaving magic into your earthly experience',
       ];
-      const advice = [
+
+      const advice = userPreferences.subscriptionTier === 'free' ? [
         'Trust your intuition and take the first step forward',
         'Pay attention to synchronicities appearing in your life',
         'Release what no longer serves your highest good',
-        'Embrace change as the universe\'s gift to your growth',
-        'Connect with others who share your mystical journey',
+      ] : [
+        'Embrace the sacred dance between surrender and intentional action',
+        'Allow your heart\'s wisdom to guide you through this mystical transformation',
+        'Trust in the divine timing of the universe\'s grand design for your life',
+        'Open yourself to receive the abundant blessings flowing toward you',
+        'Step boldly into your power as a co-creator with the cosmic forces',
       ];
 
       const newOmen: WhimsicalOmen = {
@@ -101,6 +136,32 @@ export default function HomeScreen() {
     return 'Good Evening, Mystic';
   };
 
+  const renderDailyProgress = () => {
+    if (userPreferences.subscriptionTier !== 'free') return null;
+
+    return (
+      <MysticalCard style={styles.progressCard}>
+        <View style={styles.progressHeader}>
+          <Text style={[styles.progressTitle, { color: colors.text, fontFamily: fonts.body }]}>
+            Daily Readings
+          </Text>
+          <Text style={[styles.progressCount, { color: colors.accent, fontFamily: fonts.body }]}>
+            {dailyReadings}/{dailyLimit}
+          </Text>
+        </View>
+        <ProgressBar 
+          progress={dailyReadings / dailyLimit} 
+          color={hasReachedLimit ? colors.warning : colors.accent}
+        />
+        {hasReachedLimit && (
+          <Text style={[styles.limitText, { color: colors.warning, fontFamily: fonts.body }]}>
+            Daily limit reached. Upgrade for unlimited readings!
+          </Text>
+        )}
+      </MysticalCard>
+    );
+  };
+
   return (
     <LinearGradient
       colors={[colors.background, colors.surface]}
@@ -122,6 +183,34 @@ export default function HomeScreen() {
             </Text>
           </View>
 
+          {/* Upgrade Notification */}
+          {showUpgradeNotification && (
+            <NotificationCard
+              type="mystical"
+              title="Daily Limit Reached"
+              message="You've reached your daily reading limit. Upgrade to Premium for unlimited mystical guidance!"
+              onDismiss={() => setShowUpgradeNotification(false)}
+              actionText="Upgrade Now"
+              onAction={() => {
+                setShowUpgradeNotification(false);
+                // Navigate to premium screen
+              }}
+            />
+          )}
+
+          {/* Voice Service Warning */}
+          {!isVoiceServiceAvailable && (
+            <NotificationCard
+              type="warning"
+              title="Voice Features Limited"
+              message="Voice features are not fully available on this platform. For complete voice functionality, use a custom development build."
+              onDismiss={() => {}}
+            />
+          )}
+
+          {/* Daily Progress */}
+          {renderDailyProgress()}
+
           {/* Oracle Persona Display */}
           <MysticalCard glowColor={selectedPersona.colorScheme.accent} style={styles.personaCard}>
             <View style={styles.personaContent}>
@@ -134,6 +223,14 @@ export default function HomeScreen() {
               <Text style={[styles.personaDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
                 {selectedPersona.description}
               </Text>
+              {userPreferences.subscriptionTier !== 'free' && (
+                <View style={styles.premiumBadge}>
+                  <Crown color={colors.accent} size={16} />
+                  <Text style={[styles.premiumText, { color: colors.accent, fontFamily: fonts.body }]}>
+                    {userPreferences.subscriptionTier.toUpperCase()} MEMBER
+                  </Text>
+                </View>
+              )}
             </View>
           </MysticalCard>
 
@@ -179,6 +276,14 @@ export default function HomeScreen() {
                     {currentOmen.advice}
                   </Text>
                 </View>
+                <View style={styles.omenMeta}>
+                  <Text style={[styles.confidence, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+                    {Math.round(currentOmen.confidence * 100)}% cosmic resonance
+                  </Text>
+                  <Text style={[styles.category, { color: colors.accent, fontFamily: fonts.body }]}>
+                    #{currentOmen.category}
+                  </Text>
+                </View>
                 {isPlayingVoice && (
                   <View style={styles.playingIndicator}>
                     <Text style={[styles.playingText, { color: colors.accent, fontFamily: fonts.body }]}>
@@ -203,7 +308,7 @@ export default function HomeScreen() {
                   The Oracle awaits your presence...
                 </Text>
                 <Text style={[styles.emptyOmenSubtext, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                  Touch the crystal to receive your daily guidance
+                  Touch the crystal to receive your mystical guidance
                 </Text>
               </View>
             </MysticalCard>
@@ -214,15 +319,16 @@ export default function HomeScreen() {
             <MagicalButton
               title={isGenerating ? "Consulting the Stars..." : "Receive Oracle"}
               onPress={generateOmen}
-              disabled={isGenerating}
+              disabled={isGenerating || hasReachedLimit}
               size="large"
               style={styles.oracleButton}
             />
             
-            {currentOmen && userPreferences.subscriptionTier === 'free' && (
-              <TouchableOpacity style={styles.premiumHint}>
-                <Text style={[styles.premiumHintText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                  ✨ Upgrade for unlimited daily omens
+            {hasReachedLimit && (
+              <TouchableOpacity style={styles.upgradeHint}>
+                <Crown color={colors.accent} size={16} />
+                <Text style={[styles.upgradeHintText, { color: colors.accent, fontFamily: fonts.body }]}>
+                  Upgrade for unlimited daily omens
                 </Text>
               </TouchableOpacity>
             )}
@@ -257,6 +363,28 @@ const styles = StyleSheet.create({
     fontSize: 32,
     textAlign: 'center',
   },
+  progressCard: {
+    marginBottom: 20,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  progressTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  progressCount: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  limitText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+  },
   personaCard: {
     marginBottom: 24,
   },
@@ -274,6 +402,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.8,
+    marginBottom: 12,
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  premiumText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   voiceChatContainer: {
     alignItems: 'center',
@@ -333,6 +477,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
   },
+  omenMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  confidence: {
+    fontSize: 12,
+  },
+  category: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   playingIndicator: {
     padding: 8,
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -381,12 +539,15 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     minWidth: width * 0.6,
   },
-  premiumHint: {
+  upgradeHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 16,
     padding: 12,
   },
-  premiumHintText: {
+  upgradeHintText: {
     fontSize: 14,
     textAlign: 'center',
+    marginLeft: 8,
   },
 });
