@@ -10,9 +10,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, CreditCard as Edit3, Calendar, Star, TrendingUp, Award, Clock, Heart, Save, X } from 'lucide-react-native';
+import { User, CreditCard as Edit3, Calendar, Star, TrendingUp, Award, Clock, Heart, Save, X, LogOut } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
@@ -29,9 +30,10 @@ interface UserStats {
 export default function ProfileScreen() {
   const { colors, fonts, spacing } = useTheme();
   const { selectedPersona, omenHistory, userPreferences } = useOracle();
+  const { session, userProfile, updateProfile, signOut } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [userName, setUserName] = useState('Mystical Seeker');
-  const [userBio, setUserBio] = useState('On a journey to discover the mysteries of the universe');
+  const [userName, setUserName] = useState(userProfile?.username || 'Mystical Seeker');
+  const [userBio, setUserBio] = useState(userProfile?.bio || 'On a journey to discover the mysteries of the universe');
 
   // Calculate user statistics
   const calculateStats = (): UserStats => {
@@ -65,17 +67,39 @@ export default function ProfileScreen() {
       favoritePersona,
       averageRating,
       streakDays,
-      joinDate: new Date('2024-01-01'), // Placeholder
+      joinDate: userProfile?.stats?.joinDate ? new Date(userProfile.stats.joinDate) : new Date(),
       mostActiveCategory,
     };
   };
 
   const stats = calculateStats();
 
-  const handleSaveProfile = () => {
-    setIsEditing(false);
-    // In a real app, this would save to backend/storage
-    Alert.alert('Profile Updated', 'Your mystical profile has been updated successfully!');
+  const handleSaveProfile = async () => {
+    try {
+      await updateProfile({
+        username: userName,
+        bio: userBio,
+      });
+      setIsEditing(false);
+      Alert.alert('Profile Updated', 'Your mystical profile has been updated successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    }
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to leave the mystical realm?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive',
+          onPress: () => signOut()
+        },
+      ]
+    );
   };
 
   const renderProfileHeader = () => (
@@ -141,6 +165,9 @@ export default function ProfileScreen() {
               </View>
               <Text style={[styles.userBio, { color: colors.textSecondary, fontFamily: fonts.body }]}>
                 {userBio}
+              </Text>
+              <Text style={[styles.userEmail, { color: colors.textTertiary, fontFamily: fonts.body }]}>
+                {session.user?.email}
               </Text>
               <Text style={[styles.joinDate, { color: colors.textSecondary, fontFamily: fonts.body }]}>
                 Mystical journey began {stats.joinDate.toLocaleDateString()}
@@ -336,6 +363,14 @@ export default function ProfileScreen() {
           {renderStatsGrid()}
           {renderAchievements()}
           {renderRecentActivity()}
+
+          {/* Sign Out Button */}
+          <MagicalButton
+            title="Leave the Mystical Realm"
+            onPress={handleSignOut}
+            variant="secondary"
+            style={styles.signOutButton}
+          />
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -447,8 +482,14 @@ const styles = StyleSheet.create({
   userBio: {
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
     opacity: 0.8,
+  },
+  userEmail: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 8,
+    opacity: 0.6,
   },
   joinDate: {
     fontSize: 12,
@@ -551,5 +592,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.7,
+  },
+  signOutButton: {
+    alignSelf: 'center',
+    marginTop: 20,
   },
 });

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { getLiveKitService, LiveKitVoiceService } from '@/services/LiveKitService';
 
 interface OraclePersona {
@@ -77,6 +78,7 @@ interface OracleContextType {
 const OracleContext = createContext<OracleContextType | undefined>(undefined);
 
 export function OracleProvider({ children }: { children: React.ReactNode }) {
+  const { session, userProfile } = useAuth();
   const [selectedPersona, setSelectedPersona] = useState<OraclePersona>(ORACLE_PERSONAS[0]);
   const [userPreferences, setUserPreferences] = useState<UserPreferences>({
     selectedPersona: 'cosmic-sage',
@@ -101,7 +103,6 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   const liveKitServiceRef = useRef<LiveKitVoiceService | null>(null);
 
   useEffect(() => {
-    loadUserData();
     initializeLiveKit();
     
     // Configure audio for mobile platforms
@@ -122,6 +123,15 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, []);
+
+  // Load user data when user profile changes
+  useEffect(() => {
+    if (userProfile) {
+      loadUserData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [userProfile]);
 
   const initializeLiveKit = async () => {
     try {
@@ -203,32 +213,48 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loadUserData = async () => {
-    try {
-      const [prefsData, historyData] = await Promise.all([
-        AsyncStorage.getItem('userPreferences'),
-        AsyncStorage.getItem('omenHistory'),
-      ]);
+    if (!session.user || !userProfile) {
+      setIsLoading(false);
+      return;
+    }
 
-      if (prefsData) {
-        const prefs = JSON.parse(prefsData);
-        // Ensure new properties have defaults
-        const updatedPrefs = {
-          ...prefs,
-          realTimeChatEnabled: prefs.realTimeChatEnabled !== undefined ? prefs.realTimeChatEnabled : true,
-        };
-        setUserPreferences(updatedPrefs);
-        const persona = ORACLE_PERSONAS.find(p => p.id === updatedPrefs.selectedPersona);
+    try {
+      // Load user preferences from profile
+      if (userProfile.preferences) {
+        setUserPreferences({
+          ...userProfile.preferences,
+          subscriptionTier: userProfile.subscription_tier,
+        });
+        
+        const persona = ORACLE_PERSONAS.find(p => p.id === userProfile.preferences.selectedPersona);
         if (persona) {
           setSelectedPersona(persona);
         }
       }
 
-      if (historyData) {
-        const history = JSON.parse(historyData).map((omen: any) => ({
-          ...omen,
-          timestamp: new Date(omen.timestamp),
+      // Load omen history from Supabase
+      const { data: omens, error } = await supabase
+        .from('omens')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading omens:', error);
+      } else if (omens) {
+        const transformedOmens = omens.map(omen => ({
+          id: omen.id,
+          symbol: omen.symbol,
+          crypticPhrase: omen.cryptic_phrase,
+          interpretation: omen.interpretation,
+          advice: omen.advice,
+          timestamp: new Date(omen.created_at),
+          confidence: omen.confidence,
+          category: omen.category as OmenCategory,
+          persona: omen.persona,
+          rating: omen.rating,
         }));
-        setOmenHistory(history);
+        setOmenHistory(transformedOmens);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -243,14 +269,42 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       setSelectedPersona(persona);
       const newPrefs = { ...userPreferences, selectedPersona: personaId };
       setUserPreferences(newPrefs);
-      await AsyncStorage.setItem('userPreferences', JSON.stringify(newPrefs));
+      
+      // Update in Supabase if user is logged in
+      if (session.user && userProfile) {
+        try {
+          await supabase
+            .from('profiles')
+            .update({
+              preferences: { ...userProfile.preferences, selectedPersona: personaId },
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', session.user.id);
+        } catch (error) {
+          console.error('Error updating persona:', error);
+        }
+      }
     }
   };
 
   const updatePreferences = async (preferences: Partial<UserPreferences>) => {
     const newPrefs = { ...userPreferences, ...preferences };
     setUserPreferences(newPrefs);
-    await AsyncStorage.setItem('userPreferences', JSON.stringify(newPrefs));
+    
+    // Update in Supabase if user is logged in
+    if (session.user && userProfile) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            preferences: { ...userProfile.preferences, ...preferences },
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', session.user.id);
+      } catch (error) {
+        console.error('Error updating preferences:', error);
+      }
+    }
   };
 
   const stopVoice = async () => {
@@ -479,9 +533,31 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addOmen = async (omen: WhimsicalOmen) => {
+    // Add to local state first
     const newHistory = [omen, ...omenHistory];
     setOmenHistory(newHistory);
-    await AsyncStorage.setItem('omenHistory', JSON.stringify(newHistory));
+
+    // Save to Supabase if user is logged in
+    if (session.user) {
+      try {
+        await supabase
+          .from('omens')
+          .insert({
+            id: omen.id,
+            user_id: session.user.id,
+            symbol: omen.symbol,
+            cryptic_phrase: omen.crypticPhrase,
+            interpretation: omen.interpretation,
+            advice: omen.advice,
+            confidence: omen.confidence,
+            category: omen.category,
+            persona: omen.persona,
+            rating: omen.rating,
+          });
+      } catch (error) {
+        console.error('Error saving omen to database:', error);
+      }
+    }
 
     // Play voice narration if enabled and service is available
     if (userPreferences.voiceEnabled && isVoiceServiceAvailable) {
@@ -499,11 +575,24 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const rateOmen = async (omenId: string, rating: number) => {
+    // Update local state
     const updatedHistory = omenHistory.map(omen =>
       omen.id === omenId ? { ...omen, rating } : omen
     );
     setOmenHistory(updatedHistory);
-    await AsyncStorage.setItem('omenHistory', JSON.stringify(updatedHistory));
+
+    // Update in Supabase if user is logged in
+    if (session.user) {
+      try {
+        await supabase
+          .from('omens')
+          .update({ rating })
+          .eq('id', omenId)
+          .eq('user_id', session.user.id);
+      } catch (error) {
+        console.error('Error updating omen rating:', error);
+      }
+    }
   };
 
   return (

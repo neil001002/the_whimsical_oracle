@@ -7,6 +7,9 @@ declare global {
       LIVEKIT_URL: string;
       LIVEKIT_API_KEY: string;
       LIVEKIT_API_SECRET: string;
+      EXPO_PUBLIC_SUPABASE_URL: string;
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: string;
+      SUPABASE_SERVICE_ROLE_KEY: string;
     }
   }
 }
