@@ -233,6 +233,7 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'flex-start',
     position: 'relative',
+    zIndex: 1000, // Ensure button is above all background elements
   },
   glowContainer: {
     position: 'absolute',
@@ -250,6 +251,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
+    zIndex: 1001, // Ensure gradient is above glow
   },
   shimmerContainer: {
     position: 'absolute',
@@ -266,7 +268,7 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: '600',
     textAlign: 'center',
-    zIndex: 1,
+    zIndex: 1002, // Ensure text is above everything
   },
   disabled: {
     opacity: 0.6,

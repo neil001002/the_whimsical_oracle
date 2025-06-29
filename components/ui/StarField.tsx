@@ -69,10 +69,11 @@ export function StarField() {
         ]}
         locations={[0, 0.3, 0.7, 1]}
         style={styles.cosmicBackground}
+        pointerEvents="none"
       />
       
       {/* Nebula effects */}
-      <View style={styles.nebulaContainer}>
+      <View style={styles.nebulaContainer} pointerEvents="none">
         <NebulaEffect colors={colors} />
         <NebulaEffect colors={colors} delay={2000} />
       </View>
@@ -163,6 +164,7 @@ function StarComponent({ star, colors }: StarComponentProps) {
         },
         animatedStyle,
       ]}
+      pointerEvents="none"
     />
   );
 }
@@ -211,6 +213,7 @@ function NebulaEffect({ colors, delay = 0 }: NebulaEffectProps) {
         },
         animatedStyle,
       ]}
+      pointerEvents="none"
     >
       <LinearGradient
         colors={[
@@ -219,6 +222,7 @@ function NebulaEffect({ colors, delay = 0 }: NebulaEffectProps) {
           'transparent',
         ]}
         style={styles.nebulaGradient}
+        pointerEvents="none"
       />
     </Animated.View>
   );
@@ -248,7 +252,7 @@ function ConstellationComponent({ constellation, colors }: ConstellationComponen
   }));
 
   return (
-    <Animated.View style={[styles.constellation, animatedStyle]}>
+    <Animated.View style={[styles.constellation, animatedStyle]} pointerEvents="none">
       {constellation.connections.map((connection, index) => {
         const fromStar = constellation.stars[connection.from];
         const toStar = constellation.stars[connection.to];
@@ -273,6 +277,7 @@ function ConstellationComponent({ constellation, colors }: ConstellationComponen
                 backgroundColor: colors.accent + '60',
               },
             ]}
+            pointerEvents="none"
           />
         );
       })}
@@ -312,12 +317,13 @@ function ShootingStarEffect({ colors }: { colors: any }) {
   }));
 
   return (
-    <Animated.View style={[styles.shootingStar, animatedStyle]}>
+    <Animated.View style={[styles.shootingStar, animatedStyle]} pointerEvents="none">
       <LinearGradient
         colors={[colors.accent, colors.accent + '80', 'transparent']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.shootingStarGradient}
+        pointerEvents="none"
       />
     </Animated.View>
   );
@@ -330,6 +336,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: -1, // Ensure StarField is behind all interactive elements
   },
   cosmicBackground: {
     position: 'absolute',
