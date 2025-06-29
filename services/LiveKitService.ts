@@ -15,6 +15,7 @@ const isWebRTCAvailable = (): boolean => {
     
     // Try to import LiveKit to check if it's available
     require('livekit-client');
+    require('@livekit/react-native-webrtc');
     return true;
   } catch (error) {
     console.warn('LiveKit not available:', error.message);
@@ -43,6 +44,8 @@ export class LiveKitVoiceService {
   private onAudioReceived?: (audioData: ArrayBuffer) => void;
   private onConnectionStateChanged?: (connected: boolean) => void;
   private onError?: (error: string) => void;
+  private onSpeechStarted?: () => void;
+  private onSpeechEnded?: () => void;
   private isAvailable: boolean;
 
   constructor(config: LiveKitConfig) {
@@ -206,17 +209,62 @@ export class LiveKitVoiceService {
     }
   }
 
-  // Text-to-speech using LiveKit's audio publishing
+  // Text-to-speech using native platform TTS
   async speakText(text: string, voiceConfig?: { rate?: number; pitch?: number; volume?: number }): Promise<void> {
     if (!this.isAvailable) {
       throw new Error('LiveKit service is not available');
     }
 
-    if (!this.currentSession?.isConnected) {
-      throw new Error('Not connected to voice session');
-    }
-
     try {
+      this.onSpeechStarted?.();
+      
+      // For Android, use native TTS
+      if (Platform.OS === 'android') {
+        // Import expo-speech for Android TTS
+        const { Speech } = require('expo-speech');
+        
+        const options = {
+          rate: voiceConfig?.rate || 1.0,
+          pitch: voiceConfig?.pitch || 1.0,
+          volume: voiceConfig?.volume || 1.0,
+          language: 'en-US',
+          onDone: () => {
+            this.onSpeechEnded?.();
+          },
+          onError: (error: any) => {
+            console.error('Speech error:', error);
+            this.onSpeechEnded?.();
+            this.onError?.(`Speech synthesis error: ${error}`);
+          },
+        };
+
+        await Speech.speak(text, options);
+        return;
+      }
+
+      // For iOS, use native TTS
+      if (Platform.OS === 'ios') {
+        const { Speech } = require('expo-speech');
+        
+        const options = {
+          rate: voiceConfig?.rate || 1.0,
+          pitch: voiceConfig?.pitch || 1.0,
+          volume: voiceConfig?.volume || 1.0,
+          language: 'en-US',
+          onDone: () => {
+            this.onSpeechEnded?.();
+          },
+          onError: (error: any) => {
+            console.error('Speech error:', error);
+            this.onSpeechEnded?.();
+            this.onError?.(`Speech synthesis error: ${error}`);
+          },
+        };
+
+        await Speech.speak(text, options);
+        return;
+      }
+
       // For web platform, use Web Speech API
       if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
         return new Promise((resolve, reject) => {
@@ -229,69 +277,51 @@ export class LiveKitVoiceService {
             utterance.volume = voiceConfig.volume || 1;
           }
 
+          utterance.onstart = () => {
+            this.onSpeechStarted?.();
+          };
+
           utterance.onend = () => {
-            this.currentSession!.isPlaying = false;
+            this.onSpeechEnded?.();
             resolve();
           };
 
           utterance.onerror = (event) => {
-            this.currentSession!.isPlaying = false;
+            this.onSpeechEnded?.();
             reject(new Error(`Speech synthesis error: ${event.error}`));
           };
 
-          this.currentSession.isPlaying = true;
           window.speechSynthesis.speak(utterance);
         });
       }
 
-      // For mobile platforms, we would need to implement native TTS
-      // or use a server-side TTS service that streams to LiveKit
-      console.log('Text-to-speech on mobile requires additional implementation');
-      
-      // Fallback: Send text to server for TTS processing
-      await this.sendTextForTTS(text, voiceConfig);
+      throw new Error('Text-to-speech not supported on this platform');
       
     } catch (error) {
       console.error('Error speaking text:', error);
+      this.onSpeechEnded?.();
       this.onError?.(`Failed to speak text: ${error}`);
-      throw error;
-    }
-  }
-
-  // Send text to server for TTS processing
-  private async sendTextForTTS(text: string, voiceConfig?: any): Promise<void> {
-    try {
-      const response = await fetch('/api/livekit-tts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          voiceConfig,
-          roomName: this.currentSession?.roomName,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to process text-to-speech');
-      }
-
-      console.log('Text sent for TTS processing');
-    } catch (error) {
-      console.error('Error sending text for TTS:', error);
       throw error;
     }
   }
 
   // Stop current speech
   async stopSpeaking(): Promise<void> {
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+    try {
+      // Stop native speech on mobile platforms
+      if (Platform.OS === 'android' || Platform.OS === 'ios') {
+        const { Speech } = require('expo-speech');
+        await Speech.stop();
+      }
 
-    if (this.currentSession) {
-      this.currentSession.isPlaying = false;
+      // Stop web speech
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      this.onSpeechEnded?.();
+    } catch (error) {
+      console.error('Error stopping speech:', error);
     }
   }
 
@@ -313,10 +343,14 @@ export class LiveKitVoiceService {
     onAudioReceived?: (audioData: ArrayBuffer) => void;
     onConnectionStateChanged?: (connected: boolean) => void;
     onError?: (error: string) => void;
+    onSpeechStarted?: () => void;
+    onSpeechEnded?: () => void;
   }) {
     this.onAudioReceived = handlers.onAudioReceived;
     this.onConnectionStateChanged = handlers.onConnectionStateChanged;
     this.onError = handlers.onError;
+    this.onSpeechStarted = handlers.onSpeechStarted;
+    this.onSpeechEnded = handlers.onSpeechEnded;
   }
 
   // Get current session status
