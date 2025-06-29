@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Image } from 'react-native';
+import { Video } from 'lucide-react-native';
 
 // Import PNG icons
 import HomePng from '../../assets/icons/Home_icon.png';
@@ -53,13 +54,9 @@ export default function TabsLayout() {
         options={{
           title: 'Video Oracle',
           tabBarIcon: ({ color, size, focused }) => (
-            <Image
-              source={{ uri: 'https://images.pexels.com/photos/257904/pexels-photo-257904.jpeg?auto=compress&cs=tinysrgb&w=72&h=72&dpr=1' }}
-              style={{
-                width: 36,
-                height: 36,
-              }}
-              resizeMode="contain"
+            <Video 
+              color={focused ? colors.accent : colors.textSecondary} 
+              size={36} 
             />
           ),
         }}

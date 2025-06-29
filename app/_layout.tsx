@@ -20,6 +20,9 @@ import { OracleProvider } from '@/contexts/OracleContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { VideoOracleProvider } from '@/contexts/VideoOracleContext';
 
+// Import i18n configuration
+import '@/lib/i18n';
+
 // Only register WebRTC globals on supported platforms and when available
 if (Platform.OS !== 'web') {
   try {

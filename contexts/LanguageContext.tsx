@@ -1,13 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
-  lingoService, 
-  t as translate, 
-  getCurrentLanguage, 
-  changeLanguage as changeAppLanguage, 
-  initializeI18n,
-  SUPPORTED_LANGUAGES,
-  isRTL 
-} from '@/lib/lingo';
+  SUPPORTED_LANGUAGES, 
+  isRTL, 
+  changeLanguage as changeAppLanguage,
+  getCurrentLanguage,
+  setStoredLanguage
+} from '@/lib/i18n';
 
 interface LanguageContextType {
   currentLanguage: string;
@@ -22,50 +21,42 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const { t, i18n } = useTranslation();
   const [currentLanguage, setCurrentLanguage] = useState(getCurrentLanguage());
   const [isRTLLayout, setIsRTLLayout] = useState(isRTL(getCurrentLanguage()));
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    initializeLingo();
-  }, []);
+    // Listen for language changes
+    const handleLanguageChange = (lng: string) => {
+      setCurrentLanguage(lng);
+      setIsRTLLayout(isRTL(lng));
+    };
 
-  const initializeLingo = async () => {
+    i18n.on('languageChanged', handleLanguageChange);
+
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
+
+  const handleLanguageChange = async (locale: string) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      await initializeI18n();
-      
-      const currentLang = getCurrentLanguage();
-      setCurrentLanguage(currentLang);
-      setIsRTLLayout(isRTL(currentLang));
-      
-      console.log('Lingo.dev initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize Lingo.dev:', error);
-      setError('Failed to initialize language service');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLanguageChange = async (locale: string) => {
-    try {
-      setError(null);
       await changeAppLanguage(locale);
       setCurrentLanguage(locale);
       setIsRTLLayout(isRTL(locale));
+      
+      console.log(`Language changed to: ${locale}`);
     } catch (error) {
       console.error('Failed to change language:', error);
       setError('Failed to change language');
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  // Translation helper function
-  const t = (key: string, params?: Record<string, any>) => {
-    return translate(key, params);
   };
 
   return (
