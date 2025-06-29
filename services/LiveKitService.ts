@@ -62,38 +62,14 @@ export class LiveKitVoiceService {
     return this.isAvailable;
   }
 
-  // Generate access token for LiveKit room - Updated for mobile
+  // Generate access token for LiveKit room - API only
   private async generateAccessToken(roomName: string, participantName: string): Promise<string> {
     if (!this.isAvailable) {
       throw new Error('LiveKit service is not available on this platform');
     }
 
     try {
-      // For mobile APK builds, we need to generate the token client-side
-      // since there's no server to handle API routes
-      if (Platform.OS !== 'web') {
-        // Import AccessToken for client-side token generation
-        const { AccessToken } = require('livekit-server-sdk');
-        
-        const token = new AccessToken(this.config.apiKey, this.config.apiSecret, {
-          identity: participantName,
-          ttl: '1h', // Token valid for 1 hour
-        });
-
-        // Grant permissions
-        token.addGrant({
-          room: roomName,
-          roomJoin: true,
-          canPublish: true,
-          canSubscribe: true,
-          canPublishData: true,
-        });
-
-        const jwt = await token.toJwt();
-        return jwt;
-      }
-
-      // For web, try to use the API route if available
+      // Always use the API endpoint for token generation
       const response = await fetch('/api/livekit-token', {
         method: 'POST',
         headers: {
@@ -114,34 +90,7 @@ export class LiveKitVoiceService {
       return token;
     } catch (error) {
       console.error('Error generating access token:', error);
-      
-      // Fallback: Try client-side token generation for web as well
-      if (Platform.OS === 'web') {
-        try {
-          const { AccessToken } = require('livekit-server-sdk');
-          
-          const token = new AccessToken(this.config.apiKey, this.config.apiSecret, {
-            identity: participantName,
-            ttl: '1h',
-          });
-
-          token.addGrant({
-            room: roomName,
-            roomJoin: true,
-            canPublish: true,
-            canSubscribe: true,
-            canPublishData: true,
-          });
-
-          const jwt = await token.toJwt();
-          return jwt;
-        } catch (fallbackError) {
-          console.error('Fallback token generation failed:', fallbackError);
-          throw new Error('Failed to generate access token. Please check your LiveKit configuration.');
-        }
-      }
-      
-      throw error;
+      throw new Error('Failed to generate access token. Please check your LiveKit configuration and ensure the API endpoint is available.');
     }
   }
 

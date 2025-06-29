@@ -42,7 +42,7 @@
     "expo-system-ui": "~5.0.5",
     "expo-web-browser": "~14.1.5",
     "livekit-client": "^2.6.0",
-    "livekit-server-sdk": "^2.8.0",
+    "livekit-server-sdk": "^2.13.1",
     "lucide-react-native": "^0.475.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
