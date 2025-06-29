@@ -23,6 +23,7 @@
     "@lingui/loader": "^5.3.2",
     "@lingui/macro": "^5.3.2",
     "@lingui/react": "^5.3.2",
+    "@lingo.dev/sdk": "^1.0.0",
     "@livekit/react-native": "^2.5.0",
     "@livekit/react-native-webrtc": "^125.0.7",
     "@lucide/lab": "^0.1.2",
