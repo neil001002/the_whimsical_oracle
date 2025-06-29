@@ -54,7 +54,7 @@ export default function TabsLayout() {
           title: 'Video Oracle',
           tabBarIcon: ({ color, size, focused }) => (
             <Image
-              source={require('../../assets/icons/Video_icon.PNG')}
+              source={require('../../assets/icons/Video_icon.png')}
               style={{
                 width: 36,
                 height: 36,
