@@ -18,7 +18,7 @@ const isWebRTCAvailable = (): boolean => {
     require('@livekit/react-native-webrtc');
     return true;
   } catch (error) {
-    console.warn('LiveKit not available:', error.message);
+    console.warn('LiveKit not available:', error instanceof Error ? error.message : String(error));
     return false;
   }
 };

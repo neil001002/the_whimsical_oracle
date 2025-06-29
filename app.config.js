@@ -1,39 +1,40 @@
 module.exports = {
-  name: "The Whimsical Oracle",
-  slug: "whimsical-oracle",
-  version: "1.0.0",
-  orientation: "portrait",
-  icon: "./assets/images/icon.png",
-  scheme: "whimsical-oracle",
-  userInterfaceStyle: "automatic",
+  name: 'The Whimsical Oracle',
+  slug: 'whimsical-oracle',
+  version: '1.0.0',
+  orientation: 'portrait',
+  icon: './assets/images/icon.png',
+  scheme: 'whimsical-oracle',
+  userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   splash: {
-    image: "./assets/images/splash.png",
-    resizeMode: "contain",
-    backgroundColor: "#0F0F23"
+    image: './assets/images/splash.png',
+    resizeMode: 'contain',
+    backgroundColor: '#0F0F23',
   },
-  assetBundlePatterns: [
-    "**/*"
-  ],
+  assetBundlePatterns: ['**/*'],
   ios: {
-    supportsTablet: true
+    supportsTablet: true,
   },
   android: {
+    package: 'com.whimsicaloracle.app',
     adaptiveIcon: {
-      foregroundImage: "./assets/images/adaptive-icon.png",
-      backgroundColor: "#0F0F23"
-    }
+      foregroundImage: './assets/images/adaptive-icon.png',
+      backgroundColor: '#0F0F23',
+    },
   },
   web: {
-    bundler: "metro",
-    output: "server",
-    favicon: "./assets/images/favicon.png"
+    bundler: 'metro',
+    output: 'server',
+    favicon: './assets/images/favicon.png',
   },
-  plugins: [
-    "expo-router",
-    "expo-font"
-  ],
+  plugins: ['expo-router', 'expo-font'],
   experiments: {
-    typedRoutes: true
-  }
+    typedRoutes: true,
+  },
+  extra: {
+    eas: {
+      projectId: 'df14599c-f045-424a-8111-14fc5325916a',
+    },
+  },
 };
