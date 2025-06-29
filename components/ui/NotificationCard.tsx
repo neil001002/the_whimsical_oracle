@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Bell, X, Info, AlertTriangle, CheckCircle } from 'lucide-react-native';
+import { Bell, X, Info, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MysticalCard } from './MysticalCard';
 
