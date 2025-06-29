@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -6,7 +6,6 @@ import Animated, {
   useAnimatedStyle,
   withRepeat,
   withTiming,
-  useEffect,
 } from 'react-native-reanimated';
 import { useTheme } from '@/contexts/ThemeContext';
 

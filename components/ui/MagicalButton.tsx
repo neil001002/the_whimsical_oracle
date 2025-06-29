@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   TouchableOpacity, 
   Text, 
@@ -14,7 +14,6 @@ import Animated, {
   withSpring,
   withRepeat,
   withTiming,
-  useEffect,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
