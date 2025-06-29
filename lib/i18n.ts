@@ -318,7 +318,7 @@ const getDeviceLocale = (): string => {
 const LANGUAGE_STORAGE_KEY = 'whimsical-oracle-language';
 
 export const getStoredLanguage = (): string | null => {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
     try {
       return localStorage.getItem(LANGUAGE_STORAGE_KEY);
     } catch (error) {
@@ -331,7 +331,7 @@ export const getStoredLanguage = (): string | null => {
 };
 
 export const setStoredLanguage = (locale: string): void => {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem(LANGUAGE_STORAGE_KEY, locale);
     } catch (error) {
