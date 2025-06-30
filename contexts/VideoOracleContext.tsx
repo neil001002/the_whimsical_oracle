@@ -37,7 +37,7 @@ export function VideoOracleProvider({ children }: { children: React.ReactNode })
   const [error, setError] = useState<string | null>(null);
   
   const isTavusAvailable = tavusService.isServiceAvailable();
-  const personaMappings = tavusService.getPersonaMappings(); // Now synchronous
+  const personaMappings = tavusService.getPersonaMappings();
   
   // Computed state
   const isConnected = activeSession?.status === 'connected';

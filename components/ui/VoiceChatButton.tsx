@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import { Mic, MicOff, MessageCircle } from 'lucide-react-native';
+import { Mic, MicOff, Volume2 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
 
@@ -11,48 +11,37 @@ interface VoiceChatButtonProps {
 export function VoiceChatButton({ style }: VoiceChatButtonProps) {
   const { colors, fonts } = useTheme();
   const {
-    isVoiceChatConnected,
-    isVoiceRecording,
-    startVoiceRecording,
-    stopVoiceRecording,
-    connectToVoiceChat,
-    disconnectFromVoiceChat,
+    isPlayingVoice,
+    stopVoice,
     userPreferences,
+    isVoiceServiceAvailable,
   } = useOracle();
 
-  if (!userPreferences.realTimeChatEnabled) {
+  if (!userPreferences.voiceEnabled || !isVoiceServiceAvailable) {
     return null;
   }
 
   const handlePress = async () => {
-    if (!isVoiceChatConnected) {
-      await connectToVoiceChat();
-    } else if (isVoiceRecording) {
-      await stopVoiceRecording();
-    } else {
-      await startVoiceRecording();
+    if (isPlayingVoice) {
+      await stopVoice();
     }
   };
 
   const getButtonColor = () => {
-    if (!isVoiceChatConnected) return colors.textSecondary;
-    if (isVoiceRecording) return colors.error;
+    if (isPlayingVoice) return colors.error;
     return colors.accent;
   };
 
   const getButtonText = () => {
-    if (!isVoiceChatConnected) return 'Connect';
-    if (isVoiceRecording) return 'Recording...';
-    return 'Tap to Speak';
+    if (isPlayingVoice) return 'Stop Voice';
+    return 'Voice Ready';
   };
 
   const getIcon = () => {
-    if (!isVoiceChatConnected) {
-      return <MessageCircle color={getButtonColor()} size={24} />;
+    if (isPlayingVoice) {
+      return <MicOff color={getButtonColor()} size={24} />;
     }
-    return isVoiceRecording ? 
-      <MicOff color={getButtonColor()} size={24} /> : 
-      <Mic color={getButtonColor()} size={24} />;
+    return <Volume2 color={getButtonColor()} size={24} />;
   };
 
   return (
@@ -61,7 +50,7 @@ export function VoiceChatButton({ style }: VoiceChatButtonProps) {
         styles.container,
         {
           borderColor: getButtonColor(),
-          backgroundColor: isVoiceRecording ? 
+          backgroundColor: isPlayingVoice ? 
             'rgba(239, 68, 68, 0.1)' : 
             'rgba(255, 255, 255, 0.1)',
         },
@@ -79,9 +68,9 @@ export function VoiceChatButton({ style }: VoiceChatButtonProps) {
           {getButtonText()}
         </Text>
       </View>
-      {isVoiceRecording && (
-        <View style={styles.recordingIndicator}>
-          <View style={[styles.recordingDot, { backgroundColor: colors.error }]} />
+      {isPlayingVoice && (
+        <View style={styles.playingIndicator}>
+          <View style={[styles.playingDot, { backgroundColor: colors.error }]} />
         </View>
       )}
     </TouchableOpacity>
@@ -108,12 +97,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  recordingIndicator: {
+  playingIndicator: {
     position: 'absolute',
     top: -4,
     right: -4,
   },
-  recordingDot: {
+  playingDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
