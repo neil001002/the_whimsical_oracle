@@ -228,33 +228,31 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    let body;
     let conversation_id;
 
-    // Check Content-Length and Content-Type headers before attempting to parse JSON
-    const contentLength = request.headers.get('Content-Length');
-    const contentType = request.headers.get('Content-Type');
+    // Read the request body as text first to handle empty or malformed bodies
+    const bodyText = await request.text();
     
-    // Only attempt to parse JSON if we have content and the right content type
-    if (contentLength && parseInt(contentLength) > 0 && contentType && contentType.includes('application/json')) {
-      try {
-        body = await request.json();
-        conversation_id = body.conversation_id;
-      } catch (jsonError) {
-        console.error('Failed to parse JSON body:', jsonError);
-        return new Response(JSON.stringify({ 
-          error: 'Invalid JSON body',
-          userMessage: 'Request body must be valid JSON with conversation_id field'
-        }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-    } else {
-      // Handle empty body or non-JSON content type
+    // Check if the body is empty
+    if (!bodyText || bodyText.trim() === '') {
       return new Response(JSON.stringify({ 
-        error: 'Missing or invalid request body',
+        error: 'Empty request body',
         userMessage: 'Request must include a JSON body with conversation_id field'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Attempt to parse the body as JSON
+    try {
+      const body = JSON.parse(bodyText);
+      conversation_id = body.conversation_id;
+    } catch (jsonError) {
+      console.error('Failed to parse JSON body:', jsonError);
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON body',
+        userMessage: 'Request body must be valid JSON with conversation_id field'
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
