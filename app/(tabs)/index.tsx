@@ -168,7 +168,7 @@ export default function HomeScreen() {
       await stopVoice();
     } else if (currentOmen) {
       const fullText = `${currentOmen.crypticPhrase}. ${currentOmen.interpretation}. ${currentOmen.advice}`;
-      await playOmenVoice(fullText, selectedPersona.voiceStyle);
+      await playOmenVoice(fullText, selectedPersona.id);
     }
   };
 
@@ -388,7 +388,7 @@ export default function HomeScreen() {
           {/* Interactive Features */}
           <View style={styles.featuresContainer}>
             {/* Voice Chat Button */}
-            {userPreferences.realTimeChatEnabled && (
+            {userPreferences.voiceEnabled && (
               <View style={styles.featureButton}>
                 <VoiceChatButton />
               </View>

@@ -10,13 +10,12 @@ config.resolver.assetExts = config.resolver.assetExts.filter(
 );
 config.resolver.sourceExts.push('svg');
 
-// Exclude livekit-server-sdk from bundling to prevent Node.js module errors
+// Exclude Node.js modules and server SDK from client bundling
 config.resolver.platforms = ['native', 'android', 'ios', 'web'];
 config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
 
-// Exclude Node.js modules and server SDK from client bundling
+// Exclude Node.js modules from bundling to prevent errors
 config.resolver.excludeNodeModulesFromBundle = [
-  'livekit-server-sdk',
   'jsonwebtoken',
   'jws',
   'jwa',

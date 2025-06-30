@@ -23,25 +23,6 @@ import { VideoOracleProvider } from '@/contexts/VideoOracleContext';
 // Import i18n configuration
 import '@/lib/i18n';
 
-// Only register WebRTC globals on supported platforms and when available
-if (Platform.OS !== 'web') {
-  try {
-    // Check if we're running in a custom development build (not Expo Go)
-    const isCustomBuild = !__DEV__ || (typeof expo === 'undefined' || !expo?.modules?.ExpoGo);
-    
-    if (isCustomBuild) {
-      const { registerGlobals } = require('@livekit/react-native-webrtc');
-      registerGlobals();
-      console.log('WebRTC globals registered successfully');
-    } else {
-      console.log('WebRTC not available in Expo Go - LiveKit features will be disabled');
-    }
-  } catch (error) {
-    console.warn('Failed to register WebRTC globals:', error instanceof Error ? error.message : String(error));
-    console.log('LiveKit voice features will be disabled. To enable them, create a custom development build.');
-  }
-}
-
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {

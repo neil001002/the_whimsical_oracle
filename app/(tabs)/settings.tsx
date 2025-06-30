@@ -43,12 +43,6 @@ export default function SettingsScreen() {
     isPlayingVoice,
     voiceError,
     isVoiceServiceAvailable,
-    isLiveKitAvailable,
-    // LiveKit methods
-    connectToVoiceChat,
-    disconnectFromVoiceChat,
-    isVoiceChatConnected,
-    voiceChatError
   } = useOracle();
 
   const testVoice = async () => {
@@ -58,15 +52,7 @@ export default function SettingsScreen() {
       const testText = t('settings.voice.testMessage', 'Greetings, seeker. This is how {{persona}} sounds when speaking mystical wisdom.', { 
         persona: selectedPersona.name 
       });
-      await playOmenVoice(testText, selectedPersona.voiceStyle);
-    }
-  };
-
-  const toggleVoiceChat = async () => {
-    if (isVoiceChatConnected) {
-      await disconnectFromVoiceChat();
-    } else {
-      await connectToVoiceChat();
+      await playOmenVoice(testText, selectedPersona.id);
     }
   };
 
@@ -140,46 +126,11 @@ export default function SettingsScreen() {
         />
       </View>
 
-      <View style={styles.preferenceItem}>
-        <View style={styles.preferenceLeft}>
-          <MessageCircle color={colors.accent} size={20} />
-          <View style={styles.preferenceText}>
-            <Text style={[styles.preferenceTitle, { color: colors.text, fontFamily: fonts.body }]}>
-              {t('settings.sections.voice.realTimeChat.title', 'Real-time Voice Chat')}
-            </Text>
-            <Text style={[styles.preferenceSubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              {t('settings.sections.voice.realTimeChat.subtitle', 'Interactive voice conversations')}
-            </Text>
-          </View>
-        </View>
-        <Switch
-          value={userPreferences.realTimeChatEnabled}
-          onValueChange={(value) => updatePreferences({ realTimeChatEnabled: value })}
-          trackColor={{ false: colors.surface, true: colors.accent }}
-          thumbColor={colors.text}
-        />
-      </View>
-
       {/* Service Status Information */}
       <View style={styles.serviceStatusContainer}>
         <Text style={[styles.serviceStatusTitle, { color: colors.text, fontFamily: fonts.body }]}>
           {t('settings.sections.voice.serviceStatus', 'Voice Service Status:')}
         </Text>
-        
-        <View style={styles.serviceStatusItem}>
-          <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            {t('settings.sections.voice.liveKitStatus', 'LiveKit Voice Chat:')} 
-          </Text>
-          <Text style={[
-            styles.serviceStatusValue, 
-            { 
-              color: isLiveKitAvailable ? colors.success : colors.warning, 
-              fontFamily: fonts.body 
-            }
-          ]}>
-            {isLiveKitAvailable ? t('settings.sections.voice.available', 'Available') : t('settings.sections.voice.requiresCustomBuild', 'Requires Custom Build')}
-          </Text>
-        </View>
         
         <View style={styles.serviceStatusItem}>
           <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
@@ -211,36 +162,10 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {userPreferences.realTimeChatEnabled && isLiveKitAvailable && (
-        <View style={styles.voiceChatContainer}>
-          <MagicalButton
-            title={isVoiceChatConnected ? t('settings.sections.voice.disconnectVoiceChat', 'Disconnect Voice Chat') : t('settings.sections.voice.connectVoiceChat', 'Connect Voice Chat')}
-            onPress={toggleVoiceChat}
-            variant={isVoiceChatConnected ? "secondary" : "primary"}
-            size="small"
-          />
-          {isVoiceChatConnected && (
-            <View style={styles.voiceChatStatus}>
-              <Text style={[styles.voiceChatStatusText, { color: colors.accent, fontFamily: fonts.body }]}>
-                {t('settings.sections.voice.voiceChatConnected', '🎙️ Voice chat connected')}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {(voiceError || voiceChatError) && (
+      {voiceError && (
         <View style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.body }]}>
-            {voiceError || voiceChatError}
-          </Text>
-        </View>
-      )}
-
-      {!isLiveKitAvailable && userPreferences.realTimeChatEnabled && (
-        <View style={styles.warningContainer}>
-          <Text style={[styles.warningText, { color: colors.warning, fontFamily: fonts.body }]}>
-            {t('settings.sections.voice.warning', '⚠️ Voice chat requires a custom development build with WebRTC support. Currently using Web Speech API for basic voice features.')}
+            {voiceError}
           </Text>
         </View>
       )}
@@ -481,22 +406,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
-  voiceChatContainer: {
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  voiceChatStatus: {
-    marginTop: 8,
-    padding: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  voiceChatStatusText: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
   errorContainer: {
     marginTop: 12,
     padding: 12,
@@ -506,18 +415,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   errorText: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  warningContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  warningText: {
     fontSize: 12,
     textAlign: 'center',
   },
