@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Volume2, VolumeX, Crown, Sparkles } from 'lucide-react-native';
+import * as Crypto from 'expo-crypto';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -126,7 +127,7 @@ export default function HomeScreen() {
       ];
 
       const newOmen: WhimsicalOmen = {
-        id: Date.now().toString(),
+        id: Crypto.randomUUID(),
         symbol: symbols[Math.floor(Math.random() * symbols.length)],
         crypticPhrase: crypticPhrases[Math.floor(Math.random() * crypticPhrases.length)],
         interpretation: interpretations[Math.floor(Math.random() * interpretations.length)],
