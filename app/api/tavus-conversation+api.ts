@@ -1,3 +1,33 @@
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n';
+
+// Helper function to convert ISO language codes to full language names
+function getFullLanguageName(isoCode: string): string {
+  const languageMap: Record<string, string> = {
+    'en': 'English',
+    'es': 'Spanish',
+    'fr': 'French',
+    'de': 'German',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+    'ru': 'Russian',
+    'ja': 'Japanese',
+    'ko': 'Korean',
+    'zh': 'Chinese',
+    'ar': 'Arabic',
+    'hi': 'Hindi',
+    'nl': 'Dutch',
+    'sv': 'Swedish',
+    'no': 'Norwegian',
+    'da': 'Danish',
+    'fi': 'Finnish',
+    'pl': 'Polish',
+    'tr': 'Turkish',
+    'he': 'Hebrew'
+  };
+  
+  return languageMap[isoCode] || 'English'; // Default to English if not found
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -25,6 +55,10 @@ export async function POST(request: Request) {
       });
     }
 
+    // Convert ISO language code to full language name
+    const languageCode = properties?.language || 'en';
+    const fullLanguageName = getFullLanguageName(languageCode);
+
     // Create conversation with Tavus API
     const tavusResponse = await fetch('https://tavusapi.com/v2/conversations', {
       method: 'POST',
@@ -41,7 +75,7 @@ export async function POST(request: Request) {
           participant_absent_timeout: properties?.participant_absent_timeout || 300,
           enable_recording: properties?.enable_recording || false,
           enable_transcription: properties?.enable_transcription || true,
-          language: properties?.language || 'en',
+          language: fullLanguageName, // Use full language name instead of ISO code
         },
       }),
     });
