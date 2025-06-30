@@ -81,7 +81,18 @@ export async function POST(request: Request) {
     });
 
     if (!tavusResponse.ok) {
-      const errorData = await tavusResponse.json();
+      let errorData;
+      try {
+        errorData = await tavusResponse.json();
+      } catch (parseError) {
+        // If JSON parsing fails, try to get text or use a generic error
+        try {
+          const errorText = await tavusResponse.text();
+          errorData = { error: errorText || 'Unknown error occurred' };
+        } catch (textError) {
+          errorData = { error: 'Failed to parse error response' };
+        }
+      }
       console.error('Tavus API error:', errorData);
       return new Response(JSON.stringify({ 
         error: 'Tavus API error',
@@ -145,7 +156,18 @@ export async function GET(request: Request) {
     });
 
     if (!tavusResponse.ok) {
-      const errorData = await tavusResponse.json();
+      let errorData;
+      try {
+        errorData = await tavusResponse.json();
+      } catch (parseError) {
+        // If JSON parsing fails, try to get text or use a generic error
+        try {
+          const errorText = await tavusResponse.text();
+          errorData = { error: errorText || 'Unknown error occurred' };
+        } catch (textError) {
+          errorData = { error: 'Failed to parse error response' };
+        }
+      }
       console.error('Tavus API error:', errorData);
       return new Response(JSON.stringify({ 
         error: 'Tavus API error',
@@ -209,7 +231,18 @@ export async function DELETE(request: Request) {
     });
 
     if (!tavusResponse.ok) {
-      const errorData = await tavusResponse.json();
+      let errorData;
+      try {
+        errorData = await tavusResponse.json();
+      } catch (parseError) {
+        // If JSON parsing fails, try to get text or use a generic error
+        try {
+          const errorText = await tavusResponse.text();
+          errorData = { error: errorText || 'Unknown error occurred' };
+        } catch (textError) {
+          errorData = { error: 'Failed to parse error response' };
+        }
+      }
       console.error('Tavus API error:', errorData);
       return new Response(JSON.stringify({ 
         error: 'Tavus API error',
