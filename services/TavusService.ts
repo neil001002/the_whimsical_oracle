@@ -39,7 +39,7 @@ export interface TavusReplicaInfo {
 
 export interface TavusPersonaMapping {
   personaId: string;
-  replicaId: string;
+  replicaId: string | null; // Allow null for unavailable replicas
   replicaName: string;
   description: string;
   isAvailable: boolean;
@@ -54,6 +54,21 @@ export interface VideoOracleSession {
   startTime: Date;
   endTime?: Date;
 }
+
+// Helper function to get the correct API URL
+const getApiUrl = (path: string): string => {
+  // In browser environment, use relative paths
+  if (typeof window !== 'undefined') {
+    return path;
+  }
+  
+  // In Node.js environment, construct absolute URL
+  const baseUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://your-production-domain.com' // Replace with your actual production domain
+    : 'http://localhost:8081';
+  
+  return `${baseUrl}${path}`;
+};
 
 // Check if Tavus is available (requires API key and network access)
 const isTavusAvailable = (): boolean => {
@@ -85,43 +100,45 @@ export class TavusService {
   private config: TavusConfig;
   private isAvailable: boolean;
   private activeSessions: Map<string, VideoOracleSession> = new Map();
+  private availableReplicas: TavusReplicaInfo[] = [];
+  private replicasFetched: boolean = false;
 
-  // Oracle persona to Tavus replica mappings with actual replica IDs
+  // Oracle persona mappings - replica IDs will be populated from actual Tavus account
   private readonly personaMappings: TavusPersonaMapping[] = [
     {
       personaId: 'cosmic-sage',
-      replicaId: 'r4d9b2288937',
+      replicaId: null, // Will be populated from available replicas
       replicaName: 'Cosmic Sage Oracle',
       description: 'Ancient wisdom from the stars',
-      isAvailable: true,
+      isAvailable: false,
     },
     {
       personaId: 'mystical-librarian',
-      replicaId: 'rfe12d8b9597',
+      replicaId: null, // Will be populated from available replicas
       replicaName: 'Mystical Librarian Oracle',
       description: 'Bookish wisdom keeper',
-      isAvailable: true,
+      isAvailable: false,
     },
     {
       personaId: 'starlight-fairy',
-      replicaId: 'rdc96ac37313',
+      replicaId: null, // Will be populated from available replicas
       replicaName: 'Starlight Fairy Oracle',
       description: 'Playful forest spirit',
-      isAvailable: true,
+      isAvailable: false,
     },
     {
       personaId: 'crystal-prophet',
-      replicaId: 'rf25acd9e3f5',
+      replicaId: null, // Will be populated from available replicas
       replicaName: 'Crystal Prophet Oracle',
       description: 'Mysterious seer',
-      isAvailable: true,
+      isAvailable: false,
     },
     {
       personaId: 'time-weaver',
-      replicaId: 'r292fa3a149f',
+      replicaId: null, // Will be populated from available replicas
       replicaName: 'Time Weaver Oracle',
       description: 'Temporal guardian',
-      isAvailable: true,
+      isAvailable: false,
     },
   ];
 
@@ -137,6 +154,40 @@ export class TavusService {
     
     if (!this.isAvailable) {
       console.log('Tavus service initialized but API key is not available');
+    } else {
+      // Initialize replicas when service is available
+      this.initializeReplicas();
+    }
+  }
+
+  // Initialize replicas by fetching from Tavus API
+  private async initializeReplicas(): Promise<void> {
+    if (this.replicasFetched || !this.isAvailable) {
+      return;
+    }
+
+    try {
+      const replicas = await this.getAvailableReplicas();
+      this.availableReplicas = replicas;
+      this.replicasFetched = true;
+
+      // Map available replicas to personas (use first available replica for each persona)
+      let replicaIndex = 0;
+      for (const mapping of this.personaMappings) {
+        if (replicaIndex < replicas.length) {
+          mapping.replicaId = replicas[replicaIndex].replica_id;
+          mapping.isAvailable = true;
+          replicaIndex++;
+        }
+      }
+
+      console.log(`Mapped ${replicaIndex} replicas to personas`);
+    } catch (error) {
+      console.error('Failed to initialize replicas:', error);
+      // Mark all personas as unavailable
+      this.personaMappings.forEach(mapping => {
+        mapping.isAvailable = false;
+      });
     }
   }
 
@@ -146,18 +197,24 @@ export class TavusService {
   }
 
   // Get persona mappings
-  getPersonaMappings(): TavusPersonaMapping[] {
+  async getPersonaMappings(): Promise<TavusPersonaMapping[]> {
+    // Ensure replicas are initialized
+    await this.initializeReplicas();
     return this.personaMappings;
   }
 
   // Get replica ID for a persona
-  getReplicaIdForPersona(personaId: string): string | null {
+  async getReplicaIdForPersona(personaId: string): Promise<string | null> {
+    // Ensure replicas are initialized
+    await this.initializeReplicas();
     const mapping = this.personaMappings.find(m => m.personaId === personaId);
     return mapping?.replicaId || null;
   }
 
   // Check if persona supports video interaction
-  isPersonaVideoEnabled(personaId: string): boolean {
+  async isPersonaVideoEnabled(personaId: string): Promise<boolean> {
+    // Ensure replicas are initialized
+    await this.initializeReplicas();
     const mapping = this.personaMappings.find(m => m.personaId === personaId);
     return mapping?.isAvailable || false;
   }
@@ -171,9 +228,12 @@ export class TavusService {
       throw new Error('Tavus service is not available. Please check your API key configuration.');
     }
 
-    const replicaId = this.getReplicaIdForPersona(personaId);
+    // Ensure replicas are initialized
+    await this.initializeReplicas();
+
+    const replicaId = await this.getReplicaIdForPersona(personaId);
     if (!replicaId) {
-      throw new Error(`No video replica available for persona: ${personaId}`);
+      throw new Error(`No video replica available for persona: ${personaId}. Please ensure you have replicas configured in your Tavus account.`);
     }
 
     try {
@@ -181,7 +241,7 @@ export class TavusService {
       const name = conversationName || `Oracle Session with ${personaId}`;
 
       // Create conversation via API route
-      const response = await fetch('/api/tavus-conversation', {
+      const response = await fetch(getApiUrl('/api/tavus-conversation'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +255,7 @@ export class TavusService {
             participant_absent_timeout: 300,
             enable_recording: false,
             enable_transcription: true,
-            language: 'English',
+            language: 'en',
           },
         }),
       });
@@ -245,7 +305,7 @@ export class TavusService {
 
     try {
       // End conversation via API route
-      await fetch('/api/tavus-conversation', {
+      await fetch(getApiUrl('/api/tavus-conversation'), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -280,7 +340,7 @@ export class TavusService {
 
     try {
       // Check status via API route
-      const response = await fetch(`/api/tavus-conversation?conversation_id=${session.conversationId}`);
+      const response = await fetch(getApiUrl(`/api/tavus-conversation?conversation_id=${session.conversationId}`));
       
       if (response.ok) {
         const statusData: TavusConversationResponse = await response.json();
@@ -331,10 +391,15 @@ export class TavusService {
     }
 
     try {
-      const response = await fetch('/api/tavus-replicas');
+      const response = await fetch(getApiUrl('/api/tavus-replicas'));
       
       if (response.ok) {
-        const replicas: TavusReplicaInfo[] = await response.json();
+        const responseData = await response.json();
+        // Handle both direct array response and object with data property
+        const replicas: TavusReplicaInfo[] = Array.isArray(responseData) 
+          ? responseData 
+          : (responseData.data || []);
+        
         return replicas.filter(replica => replica.status === 'ready');
       }
 
