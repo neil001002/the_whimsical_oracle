@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Dimensions, Platform, Text, TouchableOpacity, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { ExternalLink, RefreshCw, AlertCircle } from 'lucide-react-native';
+import { ExternalLink, RefreshCw, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface VideoOracleViewerProps {
