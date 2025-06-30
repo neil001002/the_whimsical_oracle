@@ -35,27 +35,12 @@ export function VideoOracleProvider({ children }: { children: React.ReactNode })
   const [activeSession, setActiveSession] = useState<VideoOracleSession | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [personaMappings, setPersonaMappings] = useState<TavusPersonaMapping[]>([]);
   
   const isTavusAvailable = tavusService.isServiceAvailable();
+  const personaMappings = tavusService.getPersonaMappings(); // Now synchronous
   
   // Computed state
   const isConnected = activeSession?.status === 'connected';
-
-  // Load persona mappings on mount
-  useEffect(() => {
-    const loadPersonaMappings = async () => {
-      try {
-        const mappings = await tavusService.getPersonaMappings();
-        setPersonaMappings(mappings);
-      } catch (error) {
-        console.error('Error loading persona mappings:', error);
-        setPersonaMappings([]);
-      }
-    };
-
-    loadPersonaMappings();
-  }, []);
 
   useEffect(() => {
     // Cleanup sessions when component unmounts
