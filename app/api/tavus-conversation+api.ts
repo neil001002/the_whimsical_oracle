@@ -228,12 +228,28 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const body = await request.json();
-    const { conversation_id } = body;
+    let body;
+    let conversation_id;
+
+    // Safely parse JSON body with proper error handling
+    try {
+      body = await request.json();
+      conversation_id = body.conversation_id;
+    } catch (jsonError) {
+      console.error('Failed to parse JSON body:', jsonError);
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON body',
+        userMessage: 'Request body must be valid JSON with conversation_id field'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!conversation_id) {
       return new Response(JSON.stringify({ 
-        error: 'Missing conversation_id' 
+        error: 'Missing conversation_id',
+        userMessage: 'conversation_id is required in the request body'
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
