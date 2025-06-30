@@ -128,6 +128,7 @@ export class RevenueCatService {
       features: [
         'Everything in Mystic',
         'Real-time voice chat',
+        'Video oracle sessions',
         'Cosmic calendar',
         'Exclusive personas',
         'Premium support',
@@ -159,7 +160,8 @@ export class RevenueCatService {
     };
 
     if (!this.isAvailable) {
-      console.log('RevenueCat service initialized with mock implementation');
+      console.log('RevenueCat service initialized with mock implementation for development');
+      this.isConfigured = true; // Auto-configure for mock mode
     }
   }
 
@@ -253,56 +255,77 @@ export class RevenueCatService {
     }
   }
 
-  // Purchase a package
+  // Purchase a package with enhanced simulation
   async purchasePackage(packageToPurchase: PurchasesPackage): Promise<PurchaseResult> {
     if (!this.isAvailable || !this.isConfigured) {
-      // Mock successful purchase for development
+      // Enhanced mock purchase simulation with realistic delay
+      console.log('Simulating purchase for:', packageToPurchase.identifier);
+      
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Determine tier from product identifier
+      let tier: 'premium' | 'mystic' = 'premium';
+      if (packageToPurchase.identifier.includes('mystic')) {
+        tier = 'mystic';
+      }
+      
+      // Create realistic mock entitlement
+      const entitlementId = tier;
+      const now = new Date();
+      const expirationDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      
+      const entitlement: EntitlementInfo = {
+        identifier: entitlementId,
+        isActive: true,
+        willRenew: true,
+        latestPurchaseDate: now.toISOString(),
+        originalPurchaseDate: now.toISOString(),
+        expirationDate: expirationDate.toISOString(),
+        store: 'mock_store',
+        productIdentifier: packageToPurchase.identifier,
+        isSandbox: true,
+        ownershipType: 'PURCHASED',
+        periodType: 'NORMAL',
+      };
+
       const mockResult: PurchaseResult = {
         customerInfo: {
           ...this.mockCustomerInfo,
           entitlements: {
             all: {
-              premium: {
-                identifier: 'premium',
-                isActive: true,
-                willRenew: true,
-                latestPurchaseDate: new Date().toISOString(),
-                originalPurchaseDate: new Date().toISOString(),
-                expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-                store: 'mock',
-                productIdentifier: packageToPurchase.identifier,
-                isSandbox: true,
-                ownershipType: 'PURCHASED',
-                periodType: 'NORMAL',
-              },
+              [entitlementId]: entitlement,
             },
             active: {
-              premium: {
-                identifier: 'premium',
-                isActive: true,
-                willRenew: true,
-                latestPurchaseDate: new Date().toISOString(),
-                originalPurchaseDate: new Date().toISOString(),
-                expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                store: 'mock',
-                productIdentifier: packageToPurchase.identifier,
-                isSandbox: true,
-                ownershipType: 'PURCHASED',
-                periodType: 'NORMAL',
-              },
+              [entitlementId]: entitlement,
             },
           },
           activeSubscriptions: [packageToPurchase.identifier],
           allPurchasedProductIdentifiers: [packageToPurchase.identifier],
+          latestExpirationDate: expirationDate.toISOString(),
+          originalPurchaseDate: now.toISOString(),
+          allPurchaseDates: {
+            [packageToPurchase.identifier]: now.toISOString(),
+          },
         },
         productIdentifier: packageToPurchase.identifier,
-        transaction: { transactionIdentifier: 'mock_transaction_123' },
+        transaction: { 
+          transactionIdentifier: `mock_transaction_${Date.now()}`,
+          productIdentifier: packageToPurchase.identifier,
+          purchaseDate: now.toISOString(),
+          originalPurchaseDate: now.toISOString(),
+        },
       };
       
       // Update mock customer info
       this.mockCustomerInfo = mockResult.customerInfo;
       
-      console.log('Mock purchase completed:', packageToPurchase.identifier);
+      console.log('Mock purchase completed successfully:', {
+        product: packageToPurchase.identifier,
+        tier: tier,
+        expirationDate: expirationDate.toISOString(),
+      });
+      
       return mockResult;
     }
 
@@ -320,7 +343,7 @@ export class RevenueCatService {
   // Restore purchases
   async restorePurchases(): Promise<CustomerInfo> {
     if (!this.isAvailable || !this.isConfigured) {
-      console.log('Mock restore purchases');
+      console.log('Mock restore purchases - returning current mock state');
       return this.mockCustomerInfo;
     }
 
@@ -392,6 +415,7 @@ export class RevenueCatService {
   async setUserId(userId: string): Promise<void> {
     if (!this.isAvailable || !this.isConfigured) {
       console.log('Mock set user ID:', userId);
+      this.mockCustomerInfo.originalAppUserId = userId;
       return;
     }
 
@@ -435,6 +459,79 @@ export class RevenueCatService {
       console.log('User logged out');
     } catch (error) {
       console.error('Failed to log out:', error);
+    }
+  }
+
+  // Simulate different subscription states for testing
+  async simulateSubscriptionState(state: 'free' | 'premium' | 'mystic' | 'expired'): Promise<void> {
+    if (!this.isAvailable) {
+      console.log('Simulating subscription state:', state);
+      
+      const now = new Date();
+      let entitlements: { [key: string]: EntitlementInfo } = {};
+      let activeSubscriptions: string[] = [];
+      let expirationDate: Date | null = null;
+
+      if (state === 'premium') {
+        expirationDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        entitlements.premium = {
+          identifier: 'premium',
+          isActive: true,
+          willRenew: true,
+          latestPurchaseDate: now.toISOString(),
+          originalPurchaseDate: now.toISOString(),
+          expirationDate: expirationDate.toISOString(),
+          store: 'mock_store',
+          productIdentifier: 'premium_monthly',
+          isSandbox: true,
+          ownershipType: 'PURCHASED',
+          periodType: 'NORMAL',
+        };
+        activeSubscriptions = ['premium_monthly'];
+      } else if (state === 'mystic') {
+        expirationDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        entitlements.mystic = {
+          identifier: 'mystic',
+          isActive: true,
+          willRenew: true,
+          latestPurchaseDate: now.toISOString(),
+          originalPurchaseDate: now.toISOString(),
+          expirationDate: expirationDate.toISOString(),
+          store: 'mock_store',
+          productIdentifier: 'mystic_monthly',
+          isSandbox: true,
+          ownershipType: 'PURCHASED',
+          periodType: 'NORMAL',
+        };
+        activeSubscriptions = ['mystic_monthly'];
+      } else if (state === 'expired') {
+        expirationDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); // Yesterday
+        entitlements.premium = {
+          identifier: 'premium',
+          isActive: false,
+          willRenew: false,
+          latestPurchaseDate: new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000).toISOString(),
+          originalPurchaseDate: new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000).toISOString(),
+          expirationDate: expirationDate.toISOString(),
+          store: 'mock_store',
+          productIdentifier: 'premium_monthly',
+          isSandbox: true,
+          ownershipType: 'PURCHASED',
+          periodType: 'NORMAL',
+        };
+      }
+
+      this.mockCustomerInfo = {
+        ...this.mockCustomerInfo,
+        entitlements: {
+          all: entitlements,
+          active: state === 'expired' ? {} : entitlements,
+        },
+        activeSubscriptions,
+        latestExpirationDate: expirationDate?.toISOString() || null,
+      };
+
+      console.log('Mock subscription state updated:', state);
     }
   }
 }
