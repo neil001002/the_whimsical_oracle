@@ -14,8 +14,8 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { OracleProvider } from '@/contexts/OracleContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { VideoOracleProvider } from '@/contexts/VideoOracleContext';
@@ -47,8 +47,8 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <LanguageProvider>
           <SubscriptionProvider>
             <OracleProvider>
               <VideoOracleProvider>
@@ -61,8 +61,8 @@ export default function RootLayout() {
               </VideoOracleProvider>
             </OracleProvider>
           </SubscriptionProvider>
-        </AuthProvider>
-      </LanguageProvider>
+        </LanguageProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
