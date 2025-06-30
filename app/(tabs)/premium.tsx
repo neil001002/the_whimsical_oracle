@@ -19,7 +19,8 @@ import {
   Sparkles,
   Check,
   X,
-  RefreshCw
+  RefreshCw,
+  TestTube
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -109,8 +110,8 @@ export default function PremiumScreen() {
     },
     {
       icon: <Sparkles color={colors.accent} size={24} />,
-      title: t('premium.features.realTimeChat', 'Real-time Voice Chat'),
-      description: t('premium.features.realTimeChatDesc', 'Interactive conversations with oracles'),
+      title: t('premium.features.videoOracle', 'Video Oracle Sessions'),
+      description: t('premium.features.videoOracleDesc', 'Face-to-face mystical conversations'),
       free: false,
       premium: false,
       mystic: true,
@@ -170,6 +171,20 @@ export default function PremiumScreen() {
         t('premium.errors.restoreFailedMessage', 'Unable to restore purchases. Please try again.'),
         [{ text: t('common.ok', 'OK'), style: 'default' }]
       );
+    }
+  };
+
+  // Test subscription simulation (development only)
+  const handleTestSubscription = async (tier: 'premium' | 'mystic') => {
+    if (!isRevenueCatAvailable) {
+      // Find the corresponding package
+      const packageToPurchase = availablePackages.find(pkg => 
+        pkg.identifier.includes(tier)
+      );
+      
+      if (packageToPurchase) {
+        await handlePurchase(packageToPurchase.identifier);
+      }
     }
   };
 
@@ -305,7 +320,7 @@ export default function PremiumScreen() {
               t('premium.upgradeTo', 'Upgrade to {{tier}}', { tier: tier.name })
             }
             onPress={() => handlePurchase(tier.productId)}
-            disabled={isPurchasing || isCurrentTier || !availablePackage}
+            disabled={isPurchasing || isCurrentTier || (!availablePackage && isRevenueCatAvailable)}
             variant={tier.popular ? 'golden' : 'primary'}
             style={styles.subscriptionButton}
           />
@@ -380,6 +395,24 @@ export default function PremiumScreen() {
               <Text style={[styles.statusText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
                 {t('premium.developmentModeDesc', 'RevenueCat is not available in this environment. Subscription features are simulated for development purposes.')}
               </Text>
+              
+              {/* Test Subscription Buttons for Development */}
+              <View style={styles.testButtons}>
+                <MagicalButton
+                  title="Test Premium"
+                  onPress={() => handleTestSubscription('premium')}
+                  variant="secondary"
+                  size="small"
+                  style={styles.testButton}
+                />
+                <MagicalButton
+                  title="Test Mystic"
+                  onPress={() => handleTestSubscription('mystic')}
+                  variant="secondary"
+                  size="small"
+                  style={styles.testButton}
+                />
+              </View>
             </MysticalCard>
           )}
 
@@ -533,6 +566,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
     opacity: 0.7,
+  },
+  testButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+    justifyContent: 'center',
+  },
+  testButton: {
+    minWidth: 100,
   },
   sectionTitle: {
     fontSize: 24,
