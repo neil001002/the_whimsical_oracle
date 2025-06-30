@@ -297,7 +297,13 @@ export class ElevenLabsService {
             reject(new Error(errorMessage));
           };
 
-          window.speechSynthesis.speak(utterance);
+          // Cancel any existing speech and wait before starting new one
+          window.speechSynthesis.cancel();
+          
+          // Add delay to allow browser to clear speech queue
+          setTimeout(() => {
+            window.speechSynthesis.speak(utterance);
+          }, 100);
         });
       } else if (Platform.OS !== 'web') {
         // For mobile platforms, use expo-speech if available
