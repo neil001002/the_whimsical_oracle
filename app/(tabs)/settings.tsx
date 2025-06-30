@@ -20,7 +20,8 @@ import {
   MessageCircle,
   Settings as SettingsIcon,
   Globe,
-  TestTube
+  TestTube,
+  Info
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
@@ -45,7 +46,10 @@ export default function SettingsScreen() {
     voiceError,
     isVoiceServiceAvailable,
     testVoice,
+    getVoiceServiceStatus,
   } = useOracle();
+
+  const voiceStatus = getVoiceServiceStatus();
 
   const testVoiceFunction = async () => {
     if (isPlayingVoice) {
@@ -128,7 +132,7 @@ export default function SettingsScreen() {
         />
       </View>
 
-      {/* Service Status Information */}
+      {/* Enhanced Service Status Information */}
       <View style={styles.serviceStatusContainer}>
         <Text style={[styles.serviceStatusTitle, { color: colors.text, fontFamily: fonts.body }]}>
           {t('settings.sections.voice.serviceStatus', 'Voice Service Status:')}
@@ -136,18 +140,51 @@ export default function SettingsScreen() {
         
         <View style={styles.serviceStatusItem}>
           <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            {t('settings.sections.voice.ttsStatus', 'Voice TTS:')} 
+            ElevenLabs API: 
           </Text>
           <Text style={[
             styles.serviceStatusValue, 
             { 
-              color: isVoiceServiceAvailable ? colors.success : colors.error, 
+              color: voiceStatus.elevenLabsAvailable ? colors.success : colors.warning, 
               fontFamily: fonts.body 
             }
           ]}>
-            {isVoiceServiceAvailable ? t('settings.sections.voice.available', 'Available') : t('settings.sections.voice.limited', 'Limited')}
+            {voiceStatus.elevenLabsAvailable ? 'Available' : 'Not Configured'}
           </Text>
         </View>
+        
+        <View style={styles.serviceStatusItem}>
+          <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+            Native TTS: 
+          </Text>
+          <Text style={[
+            styles.serviceStatusValue, 
+            { 
+              color: voiceStatus.nativeTTSAvailable ? colors.success : colors.error, 
+              fontFamily: fonts.body 
+            }
+          ]}>
+            {voiceStatus.nativeTTSAvailable ? 'Available' : 'Not Available'}
+          </Text>
+        </View>
+
+        <View style={styles.serviceStatusItem}>
+          <Text style={[styles.serviceStatusLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+            Platform: 
+          </Text>
+          <Text style={[styles.serviceStatusValue, { color: colors.textSecondary, fontFamily: fonts.body }]}>
+            {voiceStatus.platform}
+          </Text>
+        </View>
+
+        {!voiceStatus.hasApiKey && (
+          <View style={styles.infoContainer}>
+            <Info color={colors.info} size={16} />
+            <Text style={[styles.infoText, { color: colors.info, fontFamily: fonts.body }]}>
+              Add EXPO_PUBLIC_ELEVENLABS_API_KEY to your .env file for premium AI voices
+            </Text>
+          </View>
+        )}
       </View>
 
       {userPreferences.voiceEnabled && (
@@ -404,6 +441,22 @@ const styles = StyleSheet.create({
   serviceStatusValue: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  infoText: {
+    fontSize: 11,
+    marginLeft: 6,
+    flex: 1,
+    lineHeight: 16,
   },
   voiceTestContainer: {
     alignItems: 'center',

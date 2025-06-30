@@ -65,6 +65,7 @@ interface OracleContextType {
   voiceError: string | null;
   isVoiceServiceAvailable: boolean;
   testVoice: () => Promise<void>;
+  getVoiceServiceStatus: () => any;
 }
 
 const OracleContext = createContext<OracleContextType | undefined>(undefined);
@@ -86,11 +87,13 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   
   const elevenLabsService = getElevenLabsService();
-  const isVoiceServiceAvailable = elevenLabsService.isServiceAvailable();
 
   useEffect(() => {
-    console.log('OracleProvider initialized');
-    console.log('Voice service available:', isVoiceServiceAvailable);
+    console.log('🔮 OracleProvider initialized');
+    
+    // Log voice service status
+    const status = elevenLabsService.getServiceStatus();
+    console.log('🎵 Voice Service Status:', status);
     
     // Configure audio for mobile platforms
     if (Platform.OS !== 'web') {
@@ -212,28 +215,25 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
 
   const stopVoice = async () => {
     try {
-      console.log('Stopping voice from Oracle context');
+      console.log('🔮 Stopping voice from Oracle context');
       setIsPlayingVoice(false);
       setVoiceError(null);
       await elevenLabsService.stopSpeech();
     } catch (error) {
-      console.error('Error stopping voice:', error);
+      console.error('🔮 Error stopping voice:', error);
     }
   };
 
   const playOmenVoice = async (text: string, personaId: string) => {
-    console.log('playOmenVoice called:', { text: text.substring(0, 50) + '...', personaId, voiceEnabled: userPreferences.voiceEnabled });
+    console.log('🔮 playOmenVoice called:', { 
+      personaId, 
+      textLength: text.length, 
+      voiceEnabled: userPreferences.voiceEnabled,
+      serviceStatus: elevenLabsService.getServiceStatus()
+    });
 
     if (!userPreferences.voiceEnabled) {
-      console.log('Voice disabled in preferences');
-      return;
-    }
-
-    // Check if voice service is available
-    if (!isVoiceServiceAvailable) {
-      const errorMsg = 'Voice service is not available on this platform.';
-      console.warn(errorMsg);
-      setVoiceError(errorMsg);
+      console.log('🔮 Voice disabled in preferences');
       return;
     }
 
@@ -244,28 +244,28 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
     await stopVoice();
 
     try {
-      console.log('Starting voice generation...');
+      console.log('🔮 Starting voice generation...');
       
       await elevenLabsService.generateSpeech(
         text,
         personaId,
         () => {
-          console.log('Voice started playing');
+          console.log('🔮 Voice started playing');
           setIsPlayingVoice(true);
           setVoiceError(null);
         },
         () => {
-          console.log('Voice finished playing');
+          console.log('🔮 Voice finished playing');
           setIsPlayingVoice(false);
         },
         (error: string) => {
-          console.error('Voice playback error:', error);
+          console.error('🔮 Voice playback error:', error);
           setIsPlayingVoice(false);
           setVoiceError(error);
         }
       );
     } catch (error) {
-      console.error('Error playing omen voice:', error);
+      console.error('🔮 Error playing omen voice:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setVoiceError(`Voice playback failed: ${errorMessage}`);
       setIsPlayingVoice(false);
@@ -273,20 +273,26 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const testVoice = async () => {
-    console.log('Testing voice functionality...');
+    console.log('🔮 Testing voice functionality...');
+    setVoiceError(null);
+    
     try {
       const success = await elevenLabsService.testVoice(selectedPersona.id);
       if (success) {
-        console.log('Voice test successful');
+        console.log('🔮 Voice test successful');
         setVoiceError(null);
       } else {
-        console.log('Voice test failed');
+        console.log('🔮 Voice test failed');
         setVoiceError('Voice test failed - check your configuration');
       }
     } catch (error) {
-      console.error('Voice test error:', error);
+      console.error('🔮 Voice test error:', error);
       setVoiceError('Voice test failed');
     }
+  };
+
+  const getVoiceServiceStatus = () => {
+    return elevenLabsService.getServiceStatus();
   };
 
   const addOmen = async (omen: WhimsicalOmen) => {
@@ -316,15 +322,15 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Play voice narration if enabled and service is available
-    if (userPreferences.voiceEnabled && isVoiceServiceAvailable) {
+    // Play voice narration if enabled
+    if (userPreferences.voiceEnabled) {
       const fullText = `${omen.crypticPhrase}. ${omen.interpretation}. ${omen.advice}`;
       try {
-        console.log('Auto-playing voice for new omen');
+        console.log('🔮 Auto-playing voice for new omen');
         await playOmenVoice(fullText, omen.persona);
       } catch (error) {
         // Don't throw error for voice playback failures, just log them
-        console.log('Voice playback failed for new omen:', error);
+        console.log('🔮 Voice playback failed for new omen:', error);
       }
     }
   };
@@ -364,8 +370,9 @@ export function OracleProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       isPlayingVoice,
       voiceError,
-      isVoiceServiceAvailable,
+      isVoiceServiceAvailable: elevenLabsService.isServiceAvailable(),
       testVoice,
+      getVoiceServiceStatus,
     }}>
       {children}
     </OracleContext.Provider>
