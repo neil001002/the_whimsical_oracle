@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Dimensions, Platform, Text } from 'react-native';
+import { View, StyleSheet, Dimensions, Platform, Text, TouchableOpacity, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { ExternalLink, RefreshCw, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface VideoOracleViewerProps {
@@ -22,21 +23,25 @@ export function VideoOracleViewer({
   const webViewRef = useRef<WebView>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [showFallback, setShowFallback] = useState(false);
 
-  // Enhanced injected JavaScript for better Tavus integration
+  // Enhanced injected JavaScript with better Daily.co detection
   const injectedJavaScript = `
     (function() {
+      let connectionCheckInterval;
+      let connectionTimeout;
+      let hasConnected = false;
+      
       // Enhanced logging
       const originalLog = console.log;
       const originalError = console.error;
-      const originalWarn = console.warn;
       
       console.log = function(...args) {
         originalLog.apply(console, args);
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'log',
-            level: 'info',
             message: args.join(' ')
           }));
         }
@@ -46,169 +51,190 @@ export function VideoOracleViewer({
         originalError.apply(console, args);
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'log',
-            level: 'error',
+            type: 'error',
             message: args.join(' ')
           }));
         }
       };
 
-      console.warn = function(...args) {
-        originalWarn.apply(console, args);
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'log',
-            level: 'warn',
-            message: args.join(' ')
-          }));
-        }
-      };
-
-      // Override fetch to monitor API calls
-      const originalFetch = window.fetch;
-      window.fetch = function(...args) {
-        console.log('Fetch request:', args[0]);
-        return originalFetch.apply(this, args)
-          .then(response => {
-            console.log('Fetch response:', response.status, response.url);
-            return response;
-          })
-          .catch(error => {
-            console.error('Fetch error:', error);
-            throw error;
-          });
-      };
-
-      // Monitor for Daily.co iframe creation and connection
-      let dailyCheckInterval;
-      let connectionTimeout;
-
-      function checkForDailyConnection() {
-        // Look for Daily.co iframe or video elements
-        const dailyIframe = document.querySelector('iframe[src*="daily.co"]');
-        const videoElements = document.querySelectorAll('video');
-        const dailyContainer = document.querySelector('[data-testid*="daily"]') || 
-                             document.querySelector('.daily-video-element') ||
-                             document.querySelector('[class*="daily"]');
-
-        if (dailyIframe) {
-          console.log('Daily.co iframe detected:', dailyIframe.src);
+      // Function to check for video connection
+      function checkVideoConnection() {
+        try {
+          // Check for various indicators of successful video connection
+          const videoElements = document.querySelectorAll('video');
+          const dailyIframes = document.querySelectorAll('iframe[src*="daily.co"], iframe[src*="daily"]');
+          const canvasElements = document.querySelectorAll('canvas');
+          const mediaElements = document.querySelectorAll('[data-testid*="video"], [class*="video"], [id*="video"]');
           
-          // Check if iframe is blocked
-          dailyIframe.onload = function() {
-            console.log('Daily.co iframe loaded successfully');
+          // Check for Daily.co specific elements
+          const dailyContainers = document.querySelectorAll(
+            '[class*="daily"], [id*="daily"], [data-daily], .DailyIframe, #daily-iframe'
+          );
+          
+          // Check for Tavus specific elements
+          const tavusElements = document.querySelectorAll(
+            '[class*="tavus"], [id*="tavus"], [data-tavus]'
+          );
+
+          console.log('Connection check:', {
+            videos: videoElements.length,
+            iframes: dailyIframes.length,
+            canvas: canvasElements.length,
+            media: mediaElements.length,
+            daily: dailyContainers.length,
+            tavus: tavusElements.length
+          });
+
+          // Check if any video elements have actual video streams
+          let hasActiveVideo = false;
+          videoElements.forEach(video => {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              hasActiveVideo = true;
+              console.log('Active video detected:', video.videoWidth, 'x', video.videoHeight);
+            }
+          });
+
+          // Check iframe accessibility
+          let iframeAccessible = false;
+          dailyIframes.forEach(iframe => {
+            try {
+              // Try to access iframe content (will fail if blocked)
+              if (iframe.contentWindow) {
+                iframeAccessible = true;
+                console.log('Iframe accessible');
+              }
+            } catch (e) {
+              console.log('Iframe blocked by CORS:', e.message);
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'iframe_blocked',
+                  message: 'Daily.co iframe blocked by CORS policy'
+                }));
+              }
+            }
+          });
+
+          // Determine connection status
+          const isConnected = hasActiveVideo || 
+                             (dailyIframes.length > 0 && iframeAccessible) ||
+                             videoElements.length > 0 ||
+                             dailyContainers.length > 0 ||
+                             tavusElements.length > 0;
+
+          if (isConnected && !hasConnected) {
+            hasConnected = true;
+            console.log('Video connection established');
             if (window.ReactNativeWebView) {
               window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'daily_iframe_loaded'
+                type: 'connection_established',
+                hasVideo: hasActiveVideo,
+                hasIframe: dailyIframes.length > 0,
+                hasContainers: dailyContainers.length > 0
               }));
             }
-          };
-
-          dailyIframe.onerror = function(error) {
-            console.error('Daily.co iframe failed to load:', error);
-            if (window.ReactNativeWebView) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'error',
-                message: 'Daily.co iframe failed to load - connection refused'
-              }));
-            }
-          };
-        }
-
-        if (videoElements.length > 0) {
-          console.log('Video elements detected:', videoElements.length);
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'video_detected',
-              count: videoElements.length
-            }));
+            clearInterval(connectionCheckInterval);
+            clearTimeout(connectionTimeout);
           }
-        }
 
-        if (dailyContainer) {
-          console.log('Daily container detected');
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'daily_container_detected'
-            }));
-          }
+          return isConnected;
+        } catch (error) {
+          console.error('Error checking video connection:', error);
+          return false;
         }
       }
 
-      // Start checking for Daily.co elements
-      dailyCheckInterval = setInterval(checkForDailyConnection, 1000);
+      // Start connection monitoring
+      function startConnectionMonitoring() {
+        console.log('Starting connection monitoring...');
+        
+        connectionCheckInterval = setInterval(checkVideoConnection, 2000);
+        
+        // Set timeout for connection failure
+        connectionTimeout = setTimeout(() => {
+          if (!hasConnected) {
+            console.warn('Connection timeout - no video elements detected');
+            clearInterval(connectionCheckInterval);
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'connection_timeout',
+                message: 'Video connection timeout - Daily.co may be blocked'
+              }));
+            }
+          }
+        }, 15000);
+      }
 
-      // Set a timeout for connection
-      connectionTimeout = setTimeout(function() {
-        clearInterval(dailyCheckInterval);
-        console.warn('Connection timeout - no Daily.co elements detected');
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'connection_timeout'
-          }));
-        }
-      }, 30000);
+      // Handle page events
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          console.log('DOM loaded');
+          setTimeout(startConnectionMonitoring, 1000);
+        });
+      } else {
+        console.log('DOM already loaded');
+        setTimeout(startConnectionMonitoring, 1000);
+      }
 
-      // Handle page load
-      window.addEventListener('load', function() {
-        console.log('Tavus page loaded');
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'page_loaded'
-          }));
-        }
-        checkForDailyConnection();
-      });
+      // Monitor for dynamic content changes
+      if (window.MutationObserver) {
+        const observer = new MutationObserver((mutations) => {
+          let shouldCheck = false;
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+              mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === 1) { // Element node
+                  const element = node;
+                  if (element.tagName === 'VIDEO' || 
+                      element.tagName === 'IFRAME' || 
+                      element.tagName === 'CANVAS' ||
+                      (element.className && (
+                        element.className.includes('daily') || 
+                        element.className.includes('video') ||
+                        element.className.includes('tavus')
+                      ))) {
+                    shouldCheck = true;
+                  }
+                }
+              });
+            }
+          });
+          
+          if (shouldCheck && !hasConnected) {
+            console.log('DOM mutation detected, checking connection...');
+            checkVideoConnection();
+          }
+        });
+
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+      }
 
       // Handle errors
-      window.addEventListener('error', function(event) {
-        console.error('Page error:', event.error, event.message);
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'error',
-            message: event.error?.message || event.message || 'Unknown page error'
-          }));
+      window.addEventListener('error', (event) => {
+        console.error('Page error:', event.error?.message || event.message);
+        if (event.error?.message?.includes('daily.co') || 
+            event.error?.message?.includes('refused to connect')) {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'daily_connection_refused',
+              message: 'Daily.co connection refused - CORS or security policy blocking'
+            }));
+          }
         }
       });
 
-      // Handle unhandled promise rejections
-      window.addEventListener('unhandledrejection', function(event) {
-        console.error('Unhandled promise rejection:', event.reason);
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'error',
-            message: 'Promise rejection: ' + (event.reason?.message || event.reason)
-          }));
-        }
-      });
-
-      // Try to bypass some iframe restrictions
-      try {
-        // Remove X-Frame-Options if present
-        const metaTags = document.querySelectorAll('meta[http-equiv="X-Frame-Options"]');
-        metaTags.forEach(tag => tag.remove());
-        
-        // Add meta tag to allow framing
-        const meta = document.createElement('meta');
-        meta.httpEquiv = 'X-Frame-Options';
-        meta.content = 'ALLOWALL';
-        document.head.appendChild(meta);
-      } catch (e) {
-        console.log('Could not modify frame options:', e);
+      // Signal ready
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'script_ready'
+        }));
       }
 
-      // Signal script is ready
-      setTimeout(() => {
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'script_ready'
-          }));
-        }
-      }, 1000);
-
-      // Cleanup function
-      window.addEventListener('beforeunload', function() {
-        clearInterval(dailyCheckInterval);
+      // Cleanup
+      window.addEventListener('beforeunload', () => {
+        clearInterval(connectionCheckInterval);
         clearTimeout(connectionTimeout);
       });
     })();
@@ -220,51 +246,39 @@ export function VideoOracleViewer({
       const data = JSON.parse(event.nativeEvent.data);
       
       switch (data.type) {
-        case 'page_loaded':
-          console.log('Tavus page loaded successfully');
+        case 'script_ready':
+          console.log('Video oracle script ready');
           setIsLoading(false);
           break;
-        case 'daily_iframe_loaded':
-          console.log('Daily.co iframe loaded successfully');
+        case 'connection_established':
+          console.log('Video connection established:', data);
           onConnectionStateChange?.(true);
           setConnectionError(null);
+          setShowFallback(false);
           break;
-        case 'video_detected':
-          console.log(`Video elements detected: ${data.count}`);
-          onConnectionStateChange?.(true);
-          setConnectionError(null);
-          break;
-        case 'daily_container_detected':
-          console.log('Daily container detected');
-          onConnectionStateChange?.(true);
-          setConnectionError(null);
+        case 'iframe_blocked':
+        case 'daily_connection_refused':
+          console.warn('Daily.co connection blocked:', data.message);
+          setConnectionError('Video chat connection blocked by security policy');
+          setShowFallback(true);
+          onError?.('Video chat connection blocked. Please try opening in external browser.');
           break;
         case 'connection_timeout':
-          console.warn('Connection timeout - Daily.co elements not detected');
+          console.warn('Connection timeout:', data.message);
           setConnectionError('Connection timeout - video chat may not be available');
-          onError?.('Connection timeout - please try refreshing');
+          setShowFallback(true);
+          onError?.('Connection timeout. Please try refreshing or opening in external browser.');
           break;
         case 'error':
-          console.error('Tavus error:', data.message);
-          if (data.message.includes('refused to connect') || data.message.includes('daily.co')) {
-            setConnectionError('Video chat connection blocked - this may be due to browser security settings');
-            onError?.('Video chat connection was blocked. Please try opening in a new window or check your browser settings.');
-          } else {
-            onError?.(data.message);
+          console.error('Video oracle error:', data.message);
+          if (data.message.includes('daily.co') || data.message.includes('refused')) {
+            setConnectionError('Video chat blocked by browser security');
+            setShowFallback(true);
           }
-          setIsLoading(false);
-          break;
-        case 'script_ready':
-          console.log('Tavus script ready');
+          onError?.(data.message);
           break;
         case 'log':
-          if (data.level === 'error') {
-            console.error('Tavus WebView:', data.message);
-          } else if (data.level === 'warn') {
-            console.warn('Tavus WebView:', data.message);
-          } else {
-            console.log('Tavus WebView:', data.message);
-          }
+          console.log('Video oracle:', data.message);
           break;
       }
     } catch (error) {
@@ -281,57 +295,78 @@ export function VideoOracleViewer({
     const { nativeEvent } = syntheticEvent;
     console.error('WebView error:', nativeEvent);
     setConnectionError('Failed to load video oracle');
+    setShowFallback(true);
     onError?.(`Failed to load video oracle: ${nativeEvent.description}`);
     setIsLoading(false);
   };
 
-  const handleHttpError = (syntheticEvent: any) => {
-    const { nativeEvent } = syntheticEvent;
-    console.error('WebView HTTP error:', nativeEvent);
-    setConnectionError(`HTTP error: ${nativeEvent.statusCode}`);
-    onError?.(`HTTP error loading video oracle: ${nativeEvent.statusCode}`);
-    setIsLoading(false);
-  };
-
-  // Function to open in external browser as fallback
-  const openInExternalBrowser = () => {
-    if (Platform.OS === 'web') {
-      window.open(conversationUrl, '_blank', 'noopener,noreferrer');
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setConnectionError(null);
+    setShowFallback(false);
+    setIsLoading(true);
+    
+    if (webViewRef.current) {
+      webViewRef.current.reload();
     }
   };
 
+  const handleOpenExternal = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        window.open(conversationUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        await Linking.openURL(conversationUrl);
+      }
+    } catch (error) {
+      console.error('Failed to open external URL:', error);
+      onError?.('Failed to open external browser');
+    }
+  };
+
+  const renderFallbackOptions = () => (
+    <View style={[styles.fallbackContainer, { backgroundColor: colors.surface }]}>
+      <AlertCircle color={colors.warning} size={48} />
+      <Text style={[styles.fallbackTitle, { color: colors.text }]}>
+        Video Chat Connection Issue
+      </Text>
+      <Text style={[styles.fallbackMessage, { color: colors.textSecondary }]}>
+        The video oracle connection was blocked by browser security settings. This is common with embedded video chat.
+      </Text>
+      
+      <View style={styles.fallbackActions}>
+        <TouchableOpacity
+          style={[styles.fallbackButton, { backgroundColor: colors.accent }]}
+          onPress={handleOpenExternal}
+        >
+          <ExternalLink color={colors.background} size={20} />
+          <Text style={[styles.fallbackButtonText, { color: colors.background }]}>
+            Open in Browser
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.fallbackButton, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent }]}
+          onPress={handleRetry}
+        >
+          <RefreshCw color={colors.accent} size={20} />
+          <Text style={[styles.fallbackButtonText, { color: colors.accent }]}>
+            Try Again ({retryCount + 1})
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      <Text style={[styles.fallbackNote, { color: colors.textSecondary }]}>
+        Opening in your default browser usually resolves connection issues.
+      </Text>
+    </View>
+  );
+
   if (Platform.OS === 'web') {
-    // For web platform, use iframe with maximum compatibility settings
     return (
       <View style={[styles.container, style]}>
-        {connectionError ? (
-          <View style={[styles.errorContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.errorTitle, { color: colors.error }]}>
-              Connection Issue
-            </Text>
-            <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
-              {connectionError}
-            </Text>
-            <Text style={[styles.errorSuggestion, { color: colors.textSecondary }]}>
-              Try opening the video chat in a new window:
-            </Text>
-            <button
-              onClick={openInExternalBrowser}
-              style={{
-                backgroundColor: colors.accent,
-                color: colors.background,
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                marginTop: '12px',
-                fontSize: '14px',
-                fontWeight: '600',
-              }}
-            >
-              Open in New Window
-            </button>
-          </View>
+        {showFallback ? (
+          renderFallbackOptions()
         ) : (
           <>
             <iframe
@@ -343,20 +378,17 @@ export function VideoOracleViewer({
                 borderRadius: 16,
                 backgroundColor: colors.surface,
               }}
-              allow="camera *; microphone *; autoplay *; encrypted-media *; fullscreen *; display-capture *; geolocation *; gyroscope *; accelerometer *; magnetometer *; payment *; usb *"
+              allow="camera *; microphone *; autoplay *; encrypted-media *; fullscreen *; display-capture *"
               allowFullScreen
-              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-top-navigation allow-top-navigation-by-user-activation allow-downloads"
-              referrerPolicy="no-referrer-when-downgrade"
-              loading="eager"
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-top-navigation allow-downloads"
               onLoad={() => {
-                console.log('Iframe loaded successfully');
+                console.log('Iframe loaded');
                 setIsLoading(false);
-                // Don't immediately set connected state, wait for Daily.co detection
               }}
-              onError={(e) => {
-                console.error('Iframe error:', e);
-                setConnectionError('Failed to load video oracle iframe');
-                onError?.('Failed to load video oracle');
+              onError={() => {
+                console.error('Iframe failed to load');
+                setConnectionError('Failed to load video oracle');
+                setShowFallback(true);
                 setIsLoading(false);
               }}
             />
@@ -374,21 +406,10 @@ export function VideoOracleViewer({
     );
   }
 
-  // For mobile platforms, use WebView with enhanced settings
   return (
     <View style={[styles.container, style]}>
-      {connectionError ? (
-        <View style={[styles.errorContainer, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.errorTitle, { color: colors.error }]}>
-            Connection Issue
-          </Text>
-          <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
-            {connectionError}
-          </Text>
-          <Text style={[styles.errorSuggestion, { color: colors.textSecondary }]}>
-            Please try again or contact support if the issue persists.
-          </Text>
-        </View>
+      {showFallback ? (
+        renderFallbackOptions()
       ) : (
         <WebView
           ref={webViewRef}
@@ -396,24 +417,17 @@ export function VideoOracleViewer({
             uri: conversationUrl,
             headers: {
               'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-              'Accept-Language': 'en-US,en;q=0.5',
-              'Accept-Encoding': 'gzip, deflate, br',
-              'DNT': '1',
-              'Connection': 'keep-alive',
-              'Upgrade-Insecure-Requests': '1',
             }
           }}
           style={[styles.webView, { backgroundColor: colors.surface }]}
           onMessage={handleMessage}
           onLoadEnd={handleLoadEnd}
           onError={handleError}
-          onHttpError={handleHttpError}
           injectedJavaScript={injectedJavaScript}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           mediaPlaybackRequiresUserAction={false}
-          allowsInlineMediaPlayback={true}
+          allowsInlineMediaPlaybook={true}
           allowsFullscreenVideo={true}
           mixedContentMode="compatibility"
           originWhitelist={['*']}
@@ -421,18 +435,7 @@ export function VideoOracleViewer({
           scalesPageToFit={true}
           bounces={false}
           scrollEnabled={false}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          allowsBackForwardNavigationGestures={false}
-          allowsLinkPreview={false}
-          dataDetectorTypes="none"
-          decelerationRate="normal"
           allowsProtectedMedia={true}
-          // Enhanced user agent for better compatibility
-          userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
-          // Additional props for better iframe support
-          cacheEnabled={false}
-          incognito={false}
           thirdPartyCookiesEnabled={true}
           sharedCookiesEnabled={true}
           renderLoading={() => (
@@ -481,28 +484,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  errorContainer: {
+  fallbackContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
   },
-  errorTitle: {
-    fontSize: 18,
+  fallbackTitle: {
+    fontSize: 20,
     fontWeight: '600',
+    marginTop: 16,
     marginBottom: 12,
     textAlign: 'center',
   },
-  errorMessage: {
+  fallbackMessage: {
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 16,
     lineHeight: 20,
+    marginBottom: 24,
+    opacity: 0.9,
   },
-  errorSuggestion: {
+  fallbackActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  fallbackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  fallbackButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  fallbackNote: {
     fontSize: 12,
     textAlign: 'center',
-    opacity: 0.8,
-    lineHeight: 18,
+    opacity: 0.7,
+    lineHeight: 16,
   },
 });
