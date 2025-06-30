@@ -31,6 +31,7 @@ export interface UserProfile {
   avatar_url?: string;
   bio?: string;
   subscription_tier: 'free' | 'premium' | 'mystic';
+  language: string;
   preferences: {
     selectedPersona: string;
     soundEnabled: boolean;
@@ -43,5 +44,31 @@ export interface UserProfile {
     streakDays: number;
     favoriteCategory: string;
     joinDate: string;
+  };
+  settings: {
+    notifications: {
+      email: boolean;
+      push: boolean;
+      dailyReminder: boolean;
+      reminderTime: string;
+    };
+    privacy: {
+      profileVisible: boolean;
+      shareReadings: boolean;
+    };
+    accessibility: {
+      highContrast: boolean;
+      largeText: boolean;
+      reduceMotion: boolean;
+    };
+  };
+  subscriptionStatus: {
+    tier: 'free' | 'premium' | 'mystic';
+    isActive: boolean;
+    expirationDate: string | null;
+    willRenew: boolean;
+    provider?: string;
+    productId?: string;
+    lastUpdated?: string;
   };
 }

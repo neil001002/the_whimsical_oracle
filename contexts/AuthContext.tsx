@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { Platform } from 'react-native';
+import { supabase, SupabaseService } from '@/lib/supabase';
 import { User, AuthSession, SignUpData, SignInData, UserProfile } from '@/types/auth';
 import { Session } from '@supabase/supabase-js';
 
@@ -12,6 +13,11 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   userProfile: UserProfile | null;
   loading: boolean;
+  // Enhanced methods for comprehensive data sync
+  syncUserData: (data: any) => Promise<void>;
+  updateLanguage: (language: string) => Promise<void>;
+  updateSubscription: (tier: 'free' | 'premium' | 'mystic', status: any) => Promise<void>;
+  trackActivity: (activity: string, metadata?: any) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     // Get initial session
@@ -37,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (session?.user) {
         loadUserProfile(session.user.id);
+        startUserSession(session.user.id);
       }
     });
 
@@ -54,13 +62,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (session?.user) {
           await loadUserProfile(session.user.id);
+          await startUserSession(session.user.id);
         } else {
           setUserProfile(null);
+          await endUserSession();
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    // Cleanup session on unmount
+    return () => {
+      subscription.unsubscribe();
+      endUserSession();
+    };
   }, []);
 
   const transformUser = (user: any): User => ({
@@ -72,6 +86,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     created_at: user.created_at,
     updated_at: user.updated_at,
   });
+
+  const startUserSession = async (userId: string) => {
+    try {
+      const sessionData = await SupabaseService.startUserSession(
+        userId,
+        Platform.OS,
+        '1.0.0' // App version
+      );
+      if (sessionData) {
+        setCurrentSessionId(sessionData.id);
+      }
+    } catch (error) {
+      console.error('Error starting user session:', error);
+    }
+  };
+
+  const endUserSession = async () => {
+    if (currentSessionId) {
+      try {
+        await SupabaseService.endUserSession(currentSessionId);
+        setCurrentSessionId(null);
+      } catch (error) {
+        console.error('Error ending user session:', error);
+      }
+    }
+  };
 
   const loadUserProfile = async (userId: string) => {
     try {
@@ -93,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           avatar_url: data.avatar_url,
           bio: data.bio,
           subscription_tier: data.subscription_tier,
+          language: data.language || 'en',
           preferences: data.preferences || {
             selectedPersona: 'cosmic-sage',
             soundEnabled: true,
@@ -105,6 +146,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             streakDays: 0,
             favoriteCategory: 'growth',
             joinDate: new Date().toISOString(),
+          },
+          settings: data.settings || {
+            notifications: {
+              email: true,
+              push: true,
+              dailyReminder: false,
+              reminderTime: '09:00',
+            },
+            privacy: {
+              profileVisible: false,
+              shareReadings: false,
+            },
+            accessibility: {
+              highContrast: false,
+              largeText: false,
+              reduceMotion: false,
+            },
+          },
+          subscriptionStatus: data.subscription_status || {
+            tier: 'free',
+            isActive: false,
+            expirationDate: null,
+            willRenew: false,
           },
         });
       }
@@ -129,7 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error };
       }
 
-      // Create user profile
+      // Create user profile with enhanced data
       if (data.user) {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -137,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: data.user.id,
             username: username || email.split('@')[0],
             subscription_tier: 'free',
+            language: 'en', // Default language
             preferences: {
               selectedPersona: 'cosmic-sage',
               soundEnabled: true,
@@ -149,6 +214,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               streakDays: 0,
               favoriteCategory: 'growth',
               joinDate: new Date().toISOString(),
+            },
+            settings: {
+              notifications: {
+                email: true,
+                push: true,
+                dailyReminder: false,
+                reminderTime: '09:00',
+              },
+              privacy: {
+                profileVisible: false,
+                shareReadings: false,
+              },
+              accessibility: {
+                highContrast: false,
+                largeText: false,
+                reduceMotion: false,
+              },
+            },
+            subscription_status: {
+              tier: 'free',
+              isActive: false,
+              expirationDate: null,
+              willRenew: false,
+              lastUpdated: new Date().toISOString(),
             },
           });
 
@@ -178,6 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      await endUserSession();
       await supabase.auth.signOut();
       setUserProfile(null);
     } catch (error) {
@@ -220,6 +310,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Enhanced sync method for comprehensive data synchronization
+  const syncUserData = async (data: any) => {
+    if (!session.user) return;
+
+    try {
+      await SupabaseService.syncUserData(session.user.id, data);
+      
+      // Refresh local profile data
+      await refreshProfile();
+    } catch (error) {
+      console.error('Error syncing user data:', error);
+    }
+  };
+
+  // Update user language with sync
+  const updateLanguage = async (language: string) => {
+    if (!session.user) return;
+
+    try {
+      await SupabaseService.updateUserLanguage(session.user.id, language);
+      
+      // Update local state
+      if (userProfile) {
+        setUserProfile({ ...userProfile, language });
+      }
+    } catch (error) {
+      console.error('Error updating language:', error);
+    }
+  };
+
+  // Update subscription with comprehensive tracking
+  const updateSubscription = async (
+    tier: 'free' | 'premium' | 'mystic',
+    status: any
+  ) => {
+    if (!session.user) return;
+
+    try {
+      const oldTier = userProfile?.subscription_tier || 'free';
+      
+      await SupabaseService.updateSubscriptionStatus(session.user.id, tier, status);
+      
+      // Track subscription event
+      await SupabaseService.trackSubscriptionEvent(
+        session.user.id,
+        oldTier === 'free' && tier !== 'free' ? 'purchase' : 'change',
+        oldTier,
+        tier,
+        status.provider,
+        status.transactionId,
+        status.amountCents,
+        status
+      );
+      
+      // Refresh profile
+      await refreshProfile();
+    } catch (error) {
+      console.error('Error updating subscription:', error);
+    }
+  };
+
+  // Track user activity
+  const trackActivity = async (activity: string, metadata?: any) => {
+    if (!session.user) return;
+
+    try {
+      // This could be enhanced to track activities in the session
+      console.log('Activity tracked:', activity, metadata);
+    } catch (error) {
+      console.error('Error tracking activity:', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -231,6 +394,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshProfile,
         userProfile,
         loading,
+        syncUserData,
+        updateLanguage,
+        updateSubscription,
+        trackActivity,
       }}
     >
       {children}

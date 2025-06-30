@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   SUPPORTED_LANGUAGES, 
   isRTL, 
   changeLanguage as changeAppLanguage,
   getCurrentLanguage,
-  setStoredLanguage
 } from '@/lib/i18n';
 
 interface LanguageContextType {
@@ -22,10 +22,18 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const { t: i18nT, i18n } = useTranslation();
+  const { userProfile, updateLanguage: updateUserLanguage, syncUserData } = useAuth();
   const [currentLanguage, setCurrentLanguage] = useState(getCurrentLanguage());
   const [isRTLLayout, setIsRTLLayout] = useState(isRTL(getCurrentLanguage()));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Initialize language from user profile when available
+    if (userProfile?.language && userProfile.language !== currentLanguage) {
+      handleLanguageChange(userProfile.language, false); // Don't sync back to avoid loop
+    }
+  }, [userProfile?.language]);
 
   useEffect(() => {
     // Listen for language changes
@@ -41,14 +49,29 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     };
   }, [i18n]);
 
-  const handleLanguageChange = async (locale: string) => {
+  const handleLanguageChange = async (locale: string, syncToServer: boolean = true) => {
     try {
       setIsLoading(true);
       setError(null);
       
+      // Change app language
       await changeAppLanguage(locale);
       setCurrentLanguage(locale);
       setIsRTLLayout(isRTL(locale));
+      
+      // Sync to Supabase if user is logged in and syncToServer is true
+      if (syncToServer && userProfile) {
+        await updateUserLanguage(locale);
+        
+        // Also sync as part of comprehensive user data
+        await syncUserData({
+          language: locale,
+          preferences: {
+            ...userProfile.preferences,
+            language: locale,
+          },
+        });
+      }
       
       console.log(`Language changed to: ${locale}`);
     } catch (error) {
@@ -79,7 +102,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       value={{
         currentLanguage,
         supportedLanguages: SUPPORTED_LANGUAGES,
-        changeLanguage: handleLanguageChange,
+        changeLanguage: (locale: string) => handleLanguageChange(locale, true),
         isRTL: isRTLLayout,
         t,
         isLoading,

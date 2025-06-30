@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { SupabaseService } from '@/lib/supabase';
 import { getRevenueCatService, CustomerInfo, PurchasesPackage, SubscriptionTier } from '@/services/RevenueCatService';
 
 interface SubscriptionStatus {
@@ -8,6 +9,8 @@ interface SubscriptionStatus {
   isActive: boolean;
   expirationDate: Date | null;
   willRenew: boolean;
+  provider?: string;
+  productId?: string;
 }
 
 interface SubscriptionContextType {
@@ -29,7 +32,7 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth();
+  const { session, userProfile, updateSubscription, syncUserData } = useAuth();
   const revenueCatService = getRevenueCatService();
   
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
@@ -59,6 +62,21 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       resetSubscriptionStatus();
     }
   }, [session.user]);
+
+  // Sync with user profile subscription status
+  useEffect(() => {
+    if (userProfile?.subscriptionStatus) {
+      const profileStatus = userProfile.subscriptionStatus;
+      setSubscriptionStatus({
+        tier: profileStatus.tier || userProfile.subscription_tier,
+        isActive: profileStatus.isActive || false,
+        expirationDate: profileStatus.expirationDate ? new Date(profileStatus.expirationDate) : null,
+        willRenew: profileStatus.willRenew || false,
+        provider: profileStatus.provider,
+        productId: profileStatus.productId,
+      });
+    }
+  }, [userProfile]);
 
   const initializeRevenueCat = async () => {
     try {
@@ -120,14 +138,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     try {
       setError(null);
       const customerInfo = await revenueCatService.getCustomerInfo();
-      updateSubscriptionStatus(customerInfo);
+      await updateSubscriptionStatusFromCustomerInfo(customerInfo);
     } catch (error) {
       console.error('Failed to refresh subscription status:', error);
       setError('Failed to refresh subscription status');
     }
   };
 
-  const updateSubscriptionStatus = (customerInfo: CustomerInfo) => {
+  const updateSubscriptionStatusFromCustomerInfo = async (customerInfo: CustomerInfo) => {
     const tier = revenueCatService.getSubscriptionTier(customerInfo);
     const isActive = revenueCatService.hasActiveSubscription(customerInfo);
     const expirationDate = revenueCatService.getSubscriptionExpirationDate(customerInfo);
@@ -136,12 +154,39 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const activeEntitlements = Object.values(customerInfo.entitlements.active);
     const willRenew = activeEntitlements.some(entitlement => entitlement.willRenew);
     
-    setSubscriptionStatus({
+    const newStatus: SubscriptionStatus = {
       tier,
       isActive,
       expirationDate,
       willRenew,
-    });
+      provider: 'revenuecat',
+    };
+
+    setSubscriptionStatus(newStatus);
+
+    // Sync with Supabase if user is logged in
+    if (session.user) {
+      await updateSubscription(tier, {
+        isActive,
+        expirationDate: expirationDate?.toISOString() || null,
+        willRenew,
+        provider: 'revenuecat',
+        lastUpdated: new Date().toISOString(),
+      });
+
+      // Comprehensive sync
+      await syncUserData({
+        subscriptionTier: tier,
+        subscriptionStatus: {
+          tier,
+          isActive,
+          expirationDate: expirationDate?.toISOString() || null,
+          willRenew,
+          provider: 'revenuecat',
+          lastUpdated: new Date().toISOString(),
+        },
+      });
+    }
   };
 
   const resetSubscriptionStatus = () => {
@@ -159,7 +204,24 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setIsLoading(true);
       
       const result = await revenueCatService.purchasePackage(packageToPurchase);
-      updateSubscriptionStatus(result.customerInfo);
+      await updateSubscriptionStatusFromCustomerInfo(result.customerInfo);
+      
+      // Track purchase event in Supabase
+      if (session.user) {
+        await SupabaseService.trackSubscriptionEvent(
+          session.user.id,
+          'purchase',
+          subscriptionStatus.tier,
+          revenueCatService.getSubscriptionTier(result.customerInfo),
+          'revenuecat',
+          result.transaction?.transactionIdentifier,
+          Math.round(packageToPurchase.product.price * 100), // Convert to cents
+          {
+            productId: packageToPurchase.identifier,
+            packageType: packageToPurchase.packageType,
+          }
+        );
+      }
       
       console.log('Purchase successful:', result.productIdentifier);
       return true;
@@ -179,7 +241,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setIsLoading(true);
       
       const customerInfo = await revenueCatService.restorePurchases();
-      updateSubscriptionStatus(customerInfo);
+      await updateSubscriptionStatusFromCustomerInfo(customerInfo);
       
       console.log('Purchases restored successfully');
       
