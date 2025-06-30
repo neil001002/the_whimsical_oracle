@@ -263,17 +263,29 @@ export async function DELETE(request: Request) {
 
     if (!tavusResponse.ok) {
       let errorData;
-      try {
-        errorData = await tavusResponse.json();
-      } catch (parseError) {
-        // If JSON parsing fails, try to get text or use a generic error
-        try {
-          const errorText = await tavusResponse.text();
-          errorData = { error: errorText || 'Unknown error occurred' };
-        } catch (textError) {
-          errorData = { error: 'Failed to parse error response' };
+      
+      // First, get the response body as text
+      const responseText = await tavusResponse.text();
+      
+      // Check if the response has content and appears to be JSON
+      if (responseText && responseText.trim()) {
+        const contentType = tavusResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            errorData = JSON.parse(responseText);
+          } catch (parseError) {
+            // If JSON parsing fails, use the text as error message
+            errorData = { error: responseText };
+          }
+        } else {
+          // Not JSON content type, use text as error
+          errorData = { error: responseText };
         }
+      } else {
+        // Empty response body
+        errorData = { error: `HTTP ${tavusResponse.status}: ${tavusResponse.statusText}` };
       }
+      
       console.error('Tavus API error:', errorData);
       return new Response(JSON.stringify({ 
         error: 'Tavus API error',
