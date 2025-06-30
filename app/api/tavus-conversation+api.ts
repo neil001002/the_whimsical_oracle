@@ -59,6 +59,8 @@ export async function POST(request: Request) {
     const languageCode = properties?.language || 'en';
     const fullLanguageName = getFullLanguageName(languageCode);
 
+    console.log(`Creating Tavus conversation with replica: ${replica_id}`);
+
     // Create conversation with Tavus API
     const tavusResponse = await fetch('https://tavusapi.com/v2/conversations', {
       method: 'POST',
@@ -76,6 +78,8 @@ export async function POST(request: Request) {
           enable_recording: properties?.enable_recording || false,
           enable_transcription: properties?.enable_transcription || true,
           language: fullLanguageName, // Use full language name instead of ISO code
+          // Add additional properties for better iframe compatibility
+          callback_url: properties?.callback_url,
         },
       }),
     });
@@ -94,9 +98,22 @@ export async function POST(request: Request) {
         }
       }
       console.error('Tavus API error:', errorData);
+      
+      // Check for specific error types
+      if (errorData.message && errorData.message.includes('Invalid replica_uuid')) {
+        return new Response(JSON.stringify({ 
+          error: 'Invalid replica ID',
+          userMessage: 'The selected oracle persona is not available. Please try a different persona.'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      
       return new Response(JSON.stringify({ 
         error: 'Tavus API error',
-        userMessage: 'Failed to create video conversation. Please try again later.'
+        userMessage: 'Failed to create video conversation. Please try again later.',
+        details: errorData
       }), {
         status: tavusResponse.status,
         headers: { 'Content-Type': 'application/json' },
@@ -104,10 +121,17 @@ export async function POST(request: Request) {
     }
 
     const conversationData = await tavusResponse.json();
+    console.log('Tavus conversation created successfully:', conversationData.conversation_id);
 
     return new Response(JSON.stringify(conversationData), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        // Add CORS headers for better compatibility
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     });
 
   } catch (error) {
@@ -182,7 +206,12 @@ export async function GET(request: Request) {
 
     return new Response(JSON.stringify(conversationData), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     });
 
   } catch (error) {
@@ -221,6 +250,8 @@ export async function DELETE(request: Request) {
       });
     }
 
+    console.log(`Ending Tavus conversation: ${conversation_id}`);
+
     // End conversation via Tavus API
     const tavusResponse = await fetch(`https://tavusapi.com/v2/conversations/${conversation_id}`, {
       method: 'DELETE',
@@ -253,12 +284,19 @@ export async function DELETE(request: Request) {
       });
     }
 
+    console.log('Tavus conversation ended successfully');
+
     return new Response(JSON.stringify({ 
       success: true,
       message: 'Conversation ended successfully'
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     });
 
   } catch (error) {
@@ -271,4 +309,16 @@ export async function DELETE(request: Request) {
       headers: { 'Content-Type': 'application/json' },
     });
   }
+}
+
+// Handle OPTIONS requests for CORS
+export async function OPTIONS(request: Request) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, GET, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
 }
