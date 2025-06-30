@@ -14,6 +14,7 @@ import { User, CreditCard as Edit3, Calendar, Star, TrendingUp, Award, Clock, He
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
@@ -29,11 +30,12 @@ interface UserStats {
 
 export default function ProfileScreen() {
   const { colors, fonts, spacing } = useTheme();
+  const { t } = useLanguage();
   const { selectedPersona, omenHistory, userPreferences } = useOracle();
   const { session, userProfile, updateProfile, signOut } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [userName, setUserName] = useState(userProfile?.username || 'Mystical Seeker');
-  const [userBio, setUserBio] = useState(userProfile?.bio || 'On a journey to discover the mysteries of the universe');
+  const [userName, setUserName] = useState(userProfile?.username || t('profile.defaultName', 'Mystical Seeker'));
+  const [userBio, setUserBio] = useState(userProfile?.bio || t('profile.defaultBio', 'On a journey to discover the mysteries of the universe'));
 
   // Calculate user statistics
   const calculateStats = (): UserStats => {
@@ -81,20 +83,20 @@ export default function ProfileScreen() {
         bio: userBio,
       });
       setIsEditing(false);
-      Alert.alert('Profile Updated', 'Your mystical profile has been updated successfully!');
+      Alert.alert(t('profile.updateSuccess.title', 'Profile Updated'), t('profile.updateSuccess.message', 'Your mystical profile has been updated successfully!'));
     } catch (error) {
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      Alert.alert(t('common.error', 'Error'), t('profile.updateError', 'Failed to update profile. Please try again.'));
     }
   };
 
   const handleSignOut = async () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to leave the mystical realm?',
+      t('profile.signOut.title', 'Sign Out'),
+      t('profile.signOut.message', 'Are you sure you want to leave the mystical realm?'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
         { 
-          text: 'Sign Out', 
+          text: t('profile.signOut.confirm', 'Sign Out'), 
           style: 'destructive',
           onPress: () => signOut()
         },
@@ -123,14 +125,14 @@ export default function ProfileScreen() {
                 style={[styles.nameInput, { color: colors.text, fontFamily: fonts.title }]}
                 value={userName}
                 onChangeText={setUserName}
-                placeholder="Your mystical name"
+                placeholder={t('profile.placeholders.name', 'Your mystical name')}
                 placeholderTextColor={colors.textSecondary}
               />
               <TextInput
                 style={[styles.bioInput, { color: colors.text, fontFamily: fonts.body }]}
                 value={userBio}
                 onChangeText={setUserBio}
-                placeholder="Your mystical journey..."
+                placeholder={t('profile.placeholders.bio', 'Your mystical journey...')}
                 placeholderTextColor={colors.textSecondary}
                 multiline
                 numberOfLines={3}
@@ -170,7 +172,7 @@ export default function ProfileScreen() {
                 {session.user?.email}
               </Text>
               <Text style={[styles.joinDate, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                Mystical journey began {stats.joinDate.toLocaleDateString()}
+                {t('profile.joinedOn', 'Mystical journey began {{date}}', { date: stats.joinDate.toLocaleDateString() })}
               </Text>
             </View>
           )}
@@ -187,7 +189,7 @@ export default function ProfileScreen() {
           {stats.totalReadings}
         </Text>
         <Text style={[styles.statLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-          Total Readings
+          {t('profile.stats.totalReadings', 'Total Readings')}
         </Text>
       </MysticalCard>
 
@@ -197,7 +199,7 @@ export default function ProfileScreen() {
           {stats.averageRating.toFixed(1)}
         </Text>
         <Text style={[styles.statLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-          Avg Rating
+          {t('profile.stats.averageRating', 'Avg Rating')}
         </Text>
       </MysticalCard>
 
@@ -207,17 +209,17 @@ export default function ProfileScreen() {
           {stats.streakDays}
         </Text>
         <Text style={[styles.statLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-          Day Streak
+          {t('profile.stats.dayStreak', 'Day Streak')}
         </Text>
       </MysticalCard>
 
       <MysticalCard style={styles.statCard}>
         <Heart color={colors.accent} size={24} />
         <Text style={[styles.statNumber, { color: colors.text, fontFamily: fonts.title }]}>
-          {stats.mostActiveCategory}
+          {t(`categories.${stats.mostActiveCategory}`, stats.mostActiveCategory)}
         </Text>
         <Text style={[styles.statLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-          Favorite Topic
+          {t('profile.stats.favoriteCategory', 'Favorite Topic')}
         </Text>
       </MysticalCard>
     </View>
@@ -226,7 +228,7 @@ export default function ProfileScreen() {
   const renderAchievements = () => (
     <MysticalCard style={styles.achievementsCard}>
       <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
-        Mystical Achievements
+        {t('profile.achievements.title', 'Mystical Achievements')}
       </Text>
       
       <View style={styles.achievementsList}>
@@ -234,10 +236,10 @@ export default function ProfileScreen() {
           <Award color={colors.accent} size={20} />
           <View style={styles.achievementInfo}>
             <Text style={[styles.achievementTitle, { color: colors.text, fontFamily: fonts.body }]}>
-              First Steps
+              {t('profile.achievements.firstSteps', 'First Steps')}
             </Text>
             <Text style={[styles.achievementDesc, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Received your first oracle reading
+              {t('profile.achievements.firstStepsDesc', 'Received your first oracle reading')}
             </Text>
           </View>
           <Text style={[styles.achievementDate, { color: colors.textSecondary, fontFamily: fonts.body }]}>
@@ -250,10 +252,10 @@ export default function ProfileScreen() {
             <Award color={colors.accent} size={20} />
             <View style={styles.achievementInfo}>
               <Text style={[styles.achievementTitle, { color: colors.text, fontFamily: fonts.body }]}>
-                Seeker
+                {t('profile.achievements.seeker', 'Seeker')}
               </Text>
               <Text style={[styles.achievementDesc, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                Completed 5 oracle consultations
+                {t('profile.achievements.seekerDesc', 'Completed 5 oracle consultations')}
               </Text>
             </View>
             <Text style={[styles.achievementDate, { color: colors.textSecondary, fontFamily: fonts.body }]}>
@@ -267,10 +269,10 @@ export default function ProfileScreen() {
             <Award color={colors.accent} size={20} />
             <View style={styles.achievementInfo}>
               <Text style={[styles.achievementTitle, { color: colors.text, fontFamily: fonts.body }]}>
-                Mystic Explorer
+                {t('profile.achievements.explorer', 'Mystic Explorer')}
               </Text>
               <Text style={[styles.achievementDesc, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                Reached 10 oracle readings
+                {t('profile.achievements.explorerDesc', 'Reached 10 oracle readings')}
               </Text>
             </View>
             <Text style={[styles.achievementDate, { color: colors.textSecondary, fontFamily: fonts.body }]}>
@@ -284,10 +286,10 @@ export default function ProfileScreen() {
             <Award color={colors.accent} size={20} />
             <View style={styles.achievementInfo}>
               <Text style={[styles.achievementTitle, { color: colors.text, fontFamily: fonts.body }]}>
-                Wisdom Appreciator
+                {t('profile.achievements.appreciator', 'Wisdom Appreciator')}
               </Text>
               <Text style={[styles.achievementDesc, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                Maintained high rating average
+                {t('profile.achievements.appreciatorDesc', 'Maintained high rating average')}
               </Text>
             </View>
             <Text style={[styles.achievementDate, { color: colors.textSecondary, fontFamily: fonts.body }]}>
@@ -302,7 +304,7 @@ export default function ProfileScreen() {
   const renderRecentActivity = () => (
     <MysticalCard style={styles.activityCard}>
       <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
-        Recent Mystical Activity
+        {t('profile.recentActivity.title', 'Recent Mystical Activity')}
       </Text>
       
       {omenHistory.slice(0, 3).map((omen, index) => (
@@ -315,7 +317,7 @@ export default function ProfileScreen() {
               {omen.crypticPhrase}
             </Text>
             <Text style={[styles.activityDate, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              {omen.timestamp.toLocaleDateString()} • {omen.category}
+              {omen.timestamp.toLocaleDateString()} • {t(`categories.${omen.category}`, omen.category)}
             </Text>
           </View>
           {omen.rating && (
@@ -332,7 +334,7 @@ export default function ProfileScreen() {
       {omenHistory.length === 0 && (
         <View style={styles.emptyActivity}>
           <Text style={[styles.emptyText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            No mystical activity yet. Visit the Oracle to begin your journey!
+            {t('profile.recentActivity.empty', 'No mystical activity yet. Visit the Oracle to begin your journey!')}
           </Text>
         </View>
       )}
@@ -352,10 +354,10 @@ export default function ProfileScreen() {
         >
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text, fontFamily: fonts.title }]}>
-              Mystical Profile
+              {t('profile.title', 'Mystical Profile')}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Your journey through the cosmic realm
+              {t('profile.subtitle', 'Your journey through the cosmic realm')}
             </Text>
           </View>
 
@@ -366,7 +368,7 @@ export default function ProfileScreen() {
 
           {/* Sign Out Button */}
           <MagicalButton
-            title="Leave the Mystical Realm"
+            title={t('profile.signOut.button', 'Leave the Mystical Realm')}
             onPress={handleSignOut}
             variant="secondary"
             style={styles.signOutButton}

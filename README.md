@@ -1,37 +1,112 @@
-# The Whimsical Oracle
+# 🔮 The Whimsical Oracle
 
-A mystical oracle app with voice features powered by LiveKit and native text-to-speech.
+A mystical oracle app that provides cosmic wisdom and spiritual guidance through AI-powered personas, voice interactions, and video consultations. Built with React Native, Expo, and modern web technologies.
 
-## Features
+## ✨ Features
 
-- 🔮 Mystical oracle readings with multiple personas
-- 🎙️ Voice narration using native TTS (Android/iOS) and Web Speech API (Web)
-- 💬 Real-time voice chat using LiveKit (requires custom build)
-- 📱 Multi-platform support (Web, Android, iOS)
-- ⭐ Rating and history system for omens
+### 🎭 Multiple Oracle Personas
+- **Cosmic Sage**: Ancient wisdom from the stars
+- **Mystical Librarian**: Bookish wisdom with literary enchantments
+- **Starlight Fairy**: Playful forest spirit with nature-focused guidance
+- **Crystal Prophet**: Mysterious seer channeling gemstone energies
+- **Time Weaver**: Temporal guardian connecting past, present, and future
 
-## Development Setup
+### 🎙️ Advanced Voice Features
+- **Text-to-Speech**: Native TTS on mobile, Web Speech API on web
+- **Voice Chat**: Real-time voice conversations with oracles (requires custom build)
+- **Persona-specific Voice Styles**: Each oracle has unique voice characteristics
+
+### 📹 Video Oracle Sessions
+- **AI-Powered Video Conversations**: Face-to-face interactions with oracle personas
+- **Real-time Video Chat**: Powered by Tavus AI for lifelike conversations
+- **Premium Feature**: Available for Premium and Mystic subscribers
+
+### 🌍 Multi-language Support
+- **12+ Languages**: English, Spanish, French, German, Italian, Portuguese, Japanese, Korean, Chinese, Arabic, Hindi, Russian
+- **Real-time Translation**: Powered by i18next with comprehensive oracle-specific translations
+- **RTL Support**: Full support for right-to-left languages like Arabic
+
+### 💎 Subscription Tiers
+- **Free Tier**: 3 daily readings, basic personas, voice narration
+- **Premium Tier**: Unlimited readings, enhanced interpretations, all personas
+- **Mystic Tier**: Everything plus video oracle, real-time voice chat, cosmic calendar
+
+### 🎨 Beautiful UI/UX
+- **Mystical Design**: Cosmic gradients, starfield animations, ornate frames
+- **Responsive**: Optimized for web, iOS, and Android
+- **Accessibility**: Full screen reader support and keyboard navigation
+- **Dark Theme**: Mystical cosmic color scheme with golden accents
+
+## 🚀 Technology Stack
+
+### Frontend
+- **React Native** with Expo SDK 52
+- **Expo Router** for navigation
+- **TypeScript** for type safety
+- **React Native Reanimated** for smooth animations
+- **Expo Linear Gradient** for mystical visual effects
+
+### Backend & Services
+- **Supabase** for database and authentication
+- **LiveKit** for real-time voice chat
+- **Tavus AI** for video oracle conversations
+- **RevenueCat** for subscription management
+- **i18next** for internationalization
+
+### Database
+- **PostgreSQL** via Supabase
+- **Row Level Security** for data protection
+- **Real-time subscriptions** for live updates
+
+## 📱 Platform Support
+
+| Feature | Web | iOS | Android | Expo Go |
+|---------|-----|-----|---------|---------|
+| Basic Oracle | ✅ | ✅ | ✅ | ✅ |
+| Voice TTS | ✅ | ✅ | ✅ | ✅ |
+| Voice Chat | ❌ | ✅* | ✅* | ❌ |
+| Video Oracle | ✅ | ✅* | ✅* | ❌ |
+| Subscriptions | ❌ | ✅* | ✅* | ❌ |
+
+*Requires custom development build
+
+## 🛠️ Development Setup
 
 ### Prerequisites
-
-- Node.js 18+ 
+- Node.js 18+
 - Expo CLI (`npm install -g @expo/cli`)
 - EAS CLI (`npm install -g eas-cli`)
 
 ### Installation
+```bash
+# Clone the repository
+git clone <repository-url>
+cd whimsical-oracle
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+# Install dependencies
+npm install
 
-3. Copy environment variables:
-   ```bash
-   cp .env.example .env
-   ```
+# Copy environment variables
+cp .env.example .env
+```
 
-4. Update `.env` with your LiveKit credentials
+### Environment Variables
+```env
+# Supabase
+EXPO_PUBLIC_SUPABASE_URL=your-supabase-url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# LiveKit (for voice chat)
+EXPO_PUBLIC_LIVEKIT_URL=your-livekit-url
+EXPO_PUBLIC_LIVEKIT_API_KEY=your-livekit-api-key
+EXPO_PUBLIC_LIVEKIT_API_SECRET=your-livekit-api-secret
+
+# Tavus (for video oracle)
+EXPO_PUBLIC_TAVUS_API_KEY=your-tavus-api-key
+
+# RevenueCat (for subscriptions)
+EXPO_PUBLIC_REVENUECAT_API_KEY=your-revenuecat-api-key
+```
 
 ### Running the App
 
@@ -40,104 +115,110 @@ A mystical oracle app with voice features powered by LiveKit and native text-to-
 npm run dev
 ```
 
-#### Mobile Development (Expo Go - Limited Features)
+#### Mobile Development
 ```bash
-npm run dev:android  # For Android
-npm run dev:ios      # For iOS
+# iOS Simulator
+npm run dev:ios
+
+# Android Emulator
+npm run dev:android
 ```
 
-**Note**: LiveKit voice chat features require a custom development build and won't work in Expo Go.
-
-## Building for Production
-
-### Android APK (Development Build)
-
-1. Configure EAS:
-   ```bash
-   eas login
-   eas build:configure
-   ```
-
-2. Build development APK:
-   ```bash
-   npm run build:android
-   ```
-
-3. Build preview APK (for testing):
-   ```bash
-   npm run build:android-preview
-   ```
-
-### iOS Development Build
-
-```bash
-eas build --platform ios --profile development
-```
+## 🏗️ Building for Production
 
 ### Web Deployment
-
 ```bash
 npm run build:web
 ```
 
-## Voice Features
+### Mobile Apps (Custom Development Build)
+```bash
+# Configure EAS
+eas login
+eas build:configure
 
-### Text-to-Speech (TTS)
-- **Web**: Uses Web Speech API
-- **Android/iOS**: Uses Expo Speech (native TTS)
-- **Fallback**: Graceful degradation when TTS is unavailable
+# Build for Android
+npm run build:android
 
-### Real-time Voice Chat
-- **Requires**: Custom development build with LiveKit
-- **Platforms**: Android, iOS (not available on web)
-- **Features**: Real-time voice communication with the oracle
+# Build for iOS
+eas build --platform ios --profile production
+```
 
-## Environment Variables
+## 🎯 Key Features Implementation
 
-### Client-side (EXPO_PUBLIC_*)
-- `EXPO_PUBLIC_LIVEKIT_URL`: LiveKit server URL
-- `EXPO_PUBLIC_LIVEKIT_API_KEY`: LiveKit API key
-- `EXPO_PUBLIC_LIVEKIT_API_SECRET`: LiveKit API secret
+### Oracle Generation System
+- **Smart Content**: Tier-based content (basic vs premium phrases)
+- **Persona Integration**: Each oracle has unique response patterns
+- **Confidence Scoring**: AI-like confidence ratings for mystical authenticity
+- **Category System**: Career, relationships, health, creativity, finance, growth
 
-### Server-side (for API routes)
-- `LIVEKIT_URL`: LiveKit server URL
-- `LIVEKIT_API_KEY`: LiveKit API key  
-- `LIVEKIT_API_SECRET`: LiveKit API secret
+### Voice System Architecture
+- **Platform Detection**: Automatic fallback to appropriate TTS system
+- **Persona Voice Mapping**: Each oracle has unique voice characteristics
+- **Error Handling**: Graceful degradation when voice services unavailable
+- **Real-time Chat**: LiveKit integration for interactive conversations
 
-## Platform Compatibility
+### Video Oracle Technology
+- **Tavus AI Integration**: Lifelike AI video conversations
+- **Session Management**: Proper connection handling and cleanup
+- **Premium Gating**: Video features restricted to paid subscribers
+- **Cross-platform**: Works on web and mobile with proper builds
 
-| Feature | Web | Android | iOS | Expo Go |
-|---------|-----|---------|-----|---------|
-| Basic Oracle | ✅ | ✅ | ✅ | ✅ |
-| Web Speech TTS | ✅ | ❌ | ❌ | ❌ |
-| Native TTS | ❌ | ✅* | ✅* | ✅ |
-| LiveKit Voice Chat | ❌ | ✅* | ✅* | ❌ |
+### Subscription System
+- **RevenueCat Integration**: Industry-standard subscription management
+- **Tier-based Features**: Progressive feature unlocking
+- **Platform Compatibility**: Handles web limitations gracefully
+- **Restore Purchases**: Full purchase restoration support
 
-*Requires custom development build
+## 🔒 Security & Privacy
 
-## Troubleshooting
+- **Row Level Security**: Database-level access control
+- **Authentication**: Secure user authentication via Supabase
+- **API Key Protection**: Server-side API key management
+- **Data Encryption**: All data encrypted in transit and at rest
 
-### "Requires Custom Build" Error
-This means you're running in Expo Go, which doesn't support LiveKit. Build a custom development build using EAS Build.
+## 🌟 Unique Selling Points
 
-### Voice Features Not Working
-1. Check if running on supported platform
-2. Verify environment variables are set
-3. Ensure proper permissions (Android: RECORD_AUDIO)
+1. **Multi-modal Interaction**: Text, voice, and video oracle consultations
+2. **Personalized Experience**: 5 unique oracle personas with distinct personalities
+3. **Global Accessibility**: 12+ languages with cultural adaptations
+4. **Premium AI Features**: Advanced video conversations and real-time voice chat
+5. **Mystical Design**: Immersive cosmic theme with attention to detail
+6. **Cross-platform**: Seamless experience across web and mobile
 
-### Build Failures
-1. Ensure all dependencies are compatible
-2. Check EAS Build logs for specific errors
-3. Verify app.json configuration
+## 📊 Performance Optimizations
 
-## Contributing
+- **Lazy Loading**: Components and screens loaded on demand
+- **Image Optimization**: Efficient image loading and caching
+- **Animation Performance**: Hardware-accelerated animations
+- **Bundle Splitting**: Optimized bundle sizes for faster loading
+- **Offline Support**: Core features work without internet
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test on multiple platforms
-5. Submit a pull request
+## 🎨 Design Philosophy
 
-## License
+The app follows a "mystical minimalism" approach:
+- **Cosmic Color Palette**: Deep purples, cosmic blues, and mystical gold
+- **Smooth Animations**: Subtle, meaningful animations that enhance the mystical experience
+- **Typography**: Elegant serif fonts (Cinzel, Playfair Display) for mystical authenticity
+- **Spacing**: Generous white space for clarity and focus
+- **Accessibility**: High contrast ratios and screen reader support
 
-MIT License - see LICENSE file for details
+## 🚀 Future Roadmap
+
+- **AI Chat Integration**: GPT-powered conversational oracles
+- **Astrology Features**: Birth chart integration and cosmic timing
+- **Social Features**: Share readings and connect with other seekers
+- **Wearable Integration**: Apple Watch and Android Wear support
+- **AR/VR Experiences**: Immersive mystical environments
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our contributing guidelines for more information.
+
+---
+
+*"Where cosmic wisdom meets earthly guidance"* ✨🔮✨

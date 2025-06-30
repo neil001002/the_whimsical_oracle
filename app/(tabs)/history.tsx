@@ -11,12 +11,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Star } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { StarField } from '@/components/ui/StarField';
 import { WhimsicalOmen } from '@/types';
 
 export default function HistoryScreen() {
   const { colors, fonts, spacing } = useTheme();
+  const { t } = useLanguage();
   const { omenHistory, rateOmen } = useOracle();
   const [selectedOmen, setSelectedOmen] = useState<WhimsicalOmen | null>(null);
 
@@ -67,7 +69,7 @@ export default function HistoryScreen() {
             </Text>
             <View style={styles.adviceContainer}>
               <Text style={[styles.adviceLabel, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                Guidance:
+                {t('home.omen.guidance', 'Guidance')}:
               </Text>
               <Text style={[styles.advice, { color: colors.text, fontFamily: fonts.body }]}>
                 {item.advice}
@@ -75,10 +77,10 @@ export default function HistoryScreen() {
             </View>
             <View style={styles.metadata}>
               <Text style={[styles.category, { color: colors.accent, fontFamily: fonts.body }]}>
-                #{item.category}
+                #{t(`categories.${item.category}`, item.category)}
               </Text>
               <Text style={[styles.confidence, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                {Math.round(item.confidence * 100)}% resonance
+                {Math.round(item.confidence * 100)}% {t('home.omen.resonance', 'resonance')}
               </Text>
             </View>
           </View>
@@ -91,10 +93,10 @@ export default function HistoryScreen() {
     <View style={styles.emptyState}>
       <Text style={[styles.emptySymbol, { fontSize: 80 }]}>📜</Text>
       <Text style={[styles.emptyTitle, { color: colors.text, fontFamily: fonts.title }]}>
-        No Omens Yet
+        {t('history.empty.title', 'No Omens Yet')}
       </Text>
       <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-        Visit the Oracle to receive your first mystical guidance
+        {t('history.empty.subtitle', 'Visit the Oracle to receive your first mystical guidance')}
       </Text>
     </View>
   );
@@ -108,10 +110,10 @@ export default function HistoryScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text, fontFamily: fonts.title }]}>
-            Omen Chronicle
+            {t('history.title', 'Omen Chronicle')}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            Your mystical journey through time
+            {t('history.subtitle', 'Your mystical journey through time')}
           </Text>
         </View>
 

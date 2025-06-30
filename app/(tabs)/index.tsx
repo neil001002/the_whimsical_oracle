@@ -7,14 +7,17 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Volume2, VolumeX, Crown, Sparkles } from 'lucide-react-native';
+import { Volume2, VolumeX, Crown, Sparkles, Video, X } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useOracle } from '@/contexts/OracleContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useVideoOracle } from '@/contexts/VideoOracleContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
@@ -23,6 +26,8 @@ import { NotificationCard } from '@/components/ui/NotificationCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { OrnateFrame } from '@/components/ui/OrnateFrame';
 import { SubscriptionBanner } from '@/components/subscription/SubscriptionBanner';
+import { VideoOracleViewer } from '@/components/ui/VideoOracleViewer';
+import { VideoOracleButton } from '@/components/ui/VideoOracleButton';
 import { WhimsicalOmen, OmenCategory } from '@/types';
 import { router } from 'expo-router';
 
@@ -30,6 +35,7 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { colors, fonts, spacing } = useTheme();
+  const { t } = useLanguage();
   const { 
     selectedPersona, 
     userPreferences, 
@@ -42,9 +48,22 @@ export default function HomeScreen() {
     omenHistory
   } = useOracle();
   const { subscriptionStatus, canAccessPremiumFeatures } = useSubscription();
+  const {
+    isTavusAvailable,
+    activeSession,
+    isConnecting,
+    isConnected,
+    error: videoError,
+    startVideoSession,
+    endVideoSession,
+    clearError,
+    isPersonaVideoEnabled,
+  } = useVideoOracle();
+  
   const [currentOmen, setCurrentOmen] = useState<WhimsicalOmen | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showUpgradeNotification, setShowUpgradeNotification] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
 
   // Check if user has reached daily limit (free tier)
   const dailyReadings = omenHistory.filter(omen => {
@@ -57,7 +76,7 @@ export default function HomeScreen() {
   const hasReachedLimit = dailyReadings >= dailyLimit && subscriptionStatus.tier === 'free';
 
   const generateOmen = async () => {
-    console.log('Generate omen button pressed!'); // Debug log
+    console.log('Generate omen button pressed!');
     
     if (hasReachedLimit) {
       setShowUpgradeNotification(true);
@@ -76,54 +95,54 @@ export default function HomeScreen() {
       
       // Enhanced phrases based on subscription tier
       const crypticPhrases = subscriptionStatus.tier === 'free' ? [
-        'The digital ravens whisper of unexpected connections',
-        'Silver threads weave through the fabric of tomorrow',
-        'Ancient wisdom flows through modern channels',
-        'The cosmic dance reveals hidden patterns',
-        'Stars align to illuminate forgotten paths',
+        t('oracle.phrases.basic.1', 'The digital ravens whisper of unexpected connections'),
+        t('oracle.phrases.basic.2', 'Silver threads weave through the fabric of tomorrow'),
+        t('oracle.phrases.basic.3', 'Ancient wisdom flows through modern channels'),
+        t('oracle.phrases.basic.4', 'The cosmic dance reveals hidden patterns'),
+        t('oracle.phrases.basic.5', 'Stars align to illuminate forgotten paths'),
       ] : [
-        'The cosmic symphony resonates with your soul\'s deepest yearnings',
-        'Ethereal guardians dance around the threads of your destiny',
-        'The universe conspires to unveil the sacred mysteries within',
-        'Celestial energies align to illuminate your path forward',
-        'The ancient ones speak through the veil of time and space',
-        'Stardust memories awaken the dormant magic in your heart',
-        'The celestial tapestry weaves new possibilities into existence',
-        'Divine frequencies harmonize with your spiritual essence',
+        t('oracle.phrases.premium.1', 'The cosmic symphony resonates with your soul\'s deepest yearnings'),
+        t('oracle.phrases.premium.2', 'Ethereal guardians dance around the threads of your destiny'),
+        t('oracle.phrases.premium.3', 'The universe conspires to unveil the sacred mysteries within'),
+        t('oracle.phrases.premium.4', 'Celestial energies align to illuminate your path forward'),
+        t('oracle.phrases.premium.5', 'The ancient ones speak through the veil of time and space'),
+        t('oracle.phrases.premium.6', 'Stardust memories awaken the dormant magic in your heart'),
+        t('oracle.phrases.premium.7', 'The celestial tapestry weaves new possibilities into existence'),
+        t('oracle.phrases.premium.8', 'Divine frequencies harmonize with your spiritual essence'),
       ];
 
       const interpretations = subscriptionStatus.tier === 'free' ? [
-        'A message from beyond the veil suggests transformation approaches',
-        'The universe conspires to bring clarity to confusion',
-        'Hidden opportunities emerge from unexpected places',
-        'Past wisdom illuminates present challenges',
-        'New beginnings await those who trust the process',
+        t('oracle.interpretations.basic.1', 'A message from beyond the veil suggests transformation approaches'),
+        t('oracle.interpretations.basic.2', 'The universe conspires to bring clarity to confusion'),
+        t('oracle.interpretations.basic.3', 'Hidden opportunities emerge from unexpected places'),
+        t('oracle.interpretations.basic.4', 'Past wisdom illuminates present challenges'),
+        t('oracle.interpretations.basic.5', 'New beginnings await those who trust the process'),
       ] : [
-        'The cosmic forces have aligned to reveal a profound truth about your journey',
-        'Your spiritual guides are orchestrating synchronicities to guide your path',
-        'The universe is preparing to bestow upon you a gift of divine insight',
-        'Ancient wisdom keepers are opening doorways to new possibilities',
-        'The celestial realm is weaving magic into your earthly experience',
-        'Sacred geometry patterns are manifesting in your reality',
-        'The quantum field responds to your elevated consciousness',
-        'Multidimensional energies converge to support your highest good',
+        t('oracle.interpretations.premium.1', 'The cosmic forces have aligned to reveal a profound truth about your journey'),
+        t('oracle.interpretations.premium.2', 'Your spiritual guides are orchestrating synchronicities to guide your path'),
+        t('oracle.interpretations.premium.3', 'The universe is preparing to bestow upon you a gift of divine insight'),
+        t('oracle.interpretations.premium.4', 'Ancient wisdom keepers are opening doorways to new possibilities'),
+        t('oracle.interpretations.premium.5', 'The celestial realm is weaving magic into your earthly experience'),
+        t('oracle.interpretations.premium.6', 'Sacred geometry patterns are manifesting in your reality'),
+        t('oracle.interpretations.premium.7', 'The quantum field responds to your elevated consciousness'),
+        t('oracle.interpretations.premium.8', 'Multidimensional energies converge to support your highest good'),
       ];
 
       const advice = subscriptionStatus.tier === 'free' ? [
-        'Trust your intuition and take the first step forward',
-        'Pay attention to synchronicities appearing in your life',
-        'Release what no longer serves your highest good',
-        'Embrace change as the universe\'s gift to your growth',
-        'Connect with others who share your mystical journey',
+        t('oracle.advice.basic.1', 'Trust your intuition and take the first step forward'),
+        t('oracle.advice.basic.2', 'Pay attention to synchronicities appearing in your life'),
+        t('oracle.advice.basic.3', 'Release what no longer serves your highest good'),
+        t('oracle.advice.basic.4', 'Embrace change as the universe\'s gift to your growth'),
+        t('oracle.advice.basic.5', 'Connect with others who share your mystical journey'),
       ] : [
-        'Embrace the sacred dance between surrender and intentional action',
-        'Allow your heart\'s wisdom to guide you through this mystical transformation',
-        'Trust in the divine timing of the universe\'s grand design for your life',
-        'Open yourself to receive the abundant blessings flowing toward you',
-        'Step boldly into your power as a co-creator with the cosmic forces',
-        'Activate your inner oracle through meditation and sacred rituals',
-        'Channel the celestial energies into manifestation of your dreams',
-        'Align with the cosmic currents that carry you toward your destiny',
+        t('oracle.advice.premium.1', 'Embrace the sacred dance between surrender and intentional action'),
+        t('oracle.advice.premium.2', 'Allow your heart\'s wisdom to guide you through this mystical transformation'),
+        t('oracle.advice.premium.3', 'Trust in the divine timing of the universe\'s grand design for your life'),
+        t('oracle.advice.premium.4', 'Open yourself to receive the abundant blessings flowing toward you'),
+        t('oracle.advice.premium.5', 'Step boldly into your power as a co-creator with the cosmic forces'),
+        t('oracle.advice.premium.6', 'Activate your inner oracle through meditation and sacred rituals'),
+        t('oracle.advice.premium.7', 'Channel the celestial energies into manifestation of your dreams'),
+        t('oracle.advice.premium.8', 'Align with the cosmic currents that carry you toward your destiny'),
       ];
 
       const newOmen: WhimsicalOmen = {
@@ -153,11 +172,30 @@ export default function HomeScreen() {
     }
   };
 
+  const handleVideoOracleToggle = async () => {
+    if (!canAccessPremiumFeatures) {
+      setShowUpgradeNotification(true);
+      return;
+    }
+
+    if (isConnected) {
+      await endVideoSession();
+      setShowVideoModal(false);
+    } else {
+      try {
+        await startVideoSession(selectedPersona.id);
+        setShowVideoModal(true);
+      } catch (error) {
+        console.error('Failed to start video session:', error);
+      }
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning, Seeker';
-    if (hour < 18) return 'Good Afternoon, Traveler';
-    return 'Good Evening, Mystic';
+    if (hour < 12) return t('home.greeting.morning', 'Good Morning, Seeker');
+    if (hour < 18) return t('home.greeting.afternoon', 'Good Afternoon, Traveler');
+    return t('home.greeting.evening', 'Good Evening, Mystic');
   };
 
   const renderDailyProgress = () => {
@@ -167,7 +205,7 @@ export default function HomeScreen() {
       <MysticalCard variant="ethereal" style={styles.progressCard}>
         <View style={styles.progressHeader}>
           <Text style={[styles.progressTitle, { color: colors.text, fontFamily: fonts.body }]}>
-            Daily Mystical Readings
+            {t('home.dailyReadings.title', 'Daily Mystical Readings')}
           </Text>
           <Text style={[styles.progressCount, { color: colors.accent, fontFamily: fonts.title }]}>
             {dailyReadings}/{dailyLimit}
@@ -182,13 +220,70 @@ export default function HomeScreen() {
           <View style={styles.limitContainer}>
             <Sparkles color={colors.warning} size={16} />
             <Text style={[styles.limitText, { color: colors.warning, fontFamily: fonts.body }]}>
-              Daily limit reached. Upgrade for unlimited mystical guidance!
+              {t('home.dailyReadings.limitReached', 'Daily limit reached. Upgrade for unlimited mystical guidance!')}
             </Text>
           </View>
         )}
       </MysticalCard>
     );
   };
+
+  const renderVideoModal = () => (
+    <Modal
+      visible={showVideoModal}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={() => setShowVideoModal(false)}
+    >
+      <LinearGradient
+        colors={colors.gradients.cosmic}
+        style={styles.modalContainer}
+      >
+        <StarField />
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: colors.text, fontFamily: fonts.title }]}>
+              {t('home.videoOracle.title', 'Video Oracle Session')}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowVideoModal(false)}
+              style={[styles.closeButton, { borderColor: colors.accent }]}
+            >
+              <X color={colors.accent} size={24} />
+            </TouchableOpacity>
+          </View>
+          
+          {activeSession && (
+            <View style={styles.videoContainer}>
+              <VideoOracleViewer
+                conversationUrl={activeSession.conversationUrl}
+                onConnectionStateChange={(connected) => {
+                  if (!connected && activeSession) {
+                    setShowVideoModal(false);
+                  }
+                }}
+                onError={(error) => {
+                  console.error('Video oracle error:', error);
+                  setShowVideoModal(false);
+                }}
+                style={styles.videoViewer}
+              />
+            </View>
+          )}
+          
+          <View style={styles.modalControls}>
+            <VideoOracleButton
+              onPress={handleVideoOracleToggle}
+              isConnected={isConnected}
+              isLoading={isConnecting}
+              disabled={!isTavusAvailable}
+              style={styles.videoControlButton}
+            />
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    </Modal>
+  );
 
   return (
     <LinearGradient
@@ -207,10 +302,10 @@ export default function HomeScreen() {
               {getGreeting()}
             </Text>
             <Text style={[styles.title, { color: colors.text, fontFamily: fonts.title }]}>
-              The Whimsical Oracle
+              {t('home.title', 'The Whimsical Oracle')}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textTertiary, fontFamily: fonts.body }]}>
-              Where cosmic wisdom meets earthly guidance
+              {t('home.subtitle', 'Where cosmic wisdom meets earthly guidance')}
             </Text>
           </View>
 
@@ -218,7 +313,7 @@ export default function HomeScreen() {
           {!canAccessPremiumFeatures && (
             <SubscriptionBanner
               onUpgrade={() => router.push('/(tabs)/premium')}
-              message="Unlock unlimited mystical wisdom and premium features!"
+              message={t('home.subscriptionBanner.message', 'Unlock unlimited mystical wisdom and premium features!')}
             />
           )}
 
@@ -226,10 +321,10 @@ export default function HomeScreen() {
           {showUpgradeNotification && (
             <NotificationCard
               type="mystical"
-              title="✨ Mystical Limit Reached"
-              message="You've reached your daily reading limit. Upgrade to Premium for unlimited cosmic guidance and enhanced mystical features!"
+              title={t('home.notifications.limitReached.title', '✨ Mystical Limit Reached')}
+              message={t('home.notifications.limitReached.message', 'You\'ve reached your daily reading limit. Upgrade to Premium for unlimited cosmic guidance and enhanced mystical features!')}
               onDismiss={() => setShowUpgradeNotification(false)}
-              actionText="Unlock Mystical Powers"
+              actionText={t('home.notifications.limitReached.action', 'Unlock Mystical Powers')}
               onAction={() => {
                 setShowUpgradeNotification(false);
                 router.push('/(tabs)/premium');
@@ -241,9 +336,19 @@ export default function HomeScreen() {
           {!isVoiceServiceAvailable && (
             <NotificationCard
               type="warning"
-              title="Voice Features Limited"
-              message="Voice features are not fully available on this platform. For complete mystical voice functionality, use a custom development build."
+              title={t('home.notifications.voiceWarning.title', 'Voice Features Limited')}
+              message={t('home.notifications.voiceWarning.message', 'Voice features are not fully available on this platform. For complete mystical voice functionality, use a custom development build.')}
               onDismiss={() => {}}
+            />
+          )}
+
+          {/* Video Error */}
+          {videoError && (
+            <NotificationCard
+              type="warning"
+              title={t('home.notifications.videoError.title', 'Video Oracle Issue')}
+              message={videoError}
+              onDismiss={clearError}
             />
           )}
 
@@ -263,16 +368,16 @@ export default function HomeScreen() {
                   {selectedPersona.avatar}
                 </Text>
                 <Text style={[styles.personaName, { color: colors.text, fontFamily: fonts.title }]}>
-                  {selectedPersona.name}
+                  {t(`personas.${selectedPersona.id}.name`, selectedPersona.name)}
                 </Text>
                 <Text style={[styles.personaDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                  {selectedPersona.description}
+                  {t(`personas.${selectedPersona.id}.description`, selectedPersona.description)}
                 </Text>
                 {subscriptionStatus.tier !== 'free' && (
                   <View style={[styles.premiumBadge, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
                     <Crown color={colors.accent} size={16} />
                     <Text style={[styles.premiumText, { color: colors.accent, fontFamily: fonts.body }]}>
-                      {subscriptionStatus.tier.toUpperCase()} MYSTIC
+                      {subscriptionStatus.tier.toUpperCase()} {t('home.persona.mystic', 'MYSTIC')}
                     </Text>
                   </View>
                 )}
@@ -280,12 +385,32 @@ export default function HomeScreen() {
             </MysticalCard>
           </OrnateFrame>
 
-          {/* Voice Chat Button */}
-          {userPreferences.realTimeChatEnabled && (
-            <View style={styles.voiceChatContainer}>
-              <VoiceChatButton />
-            </View>
-          )}
+          {/* Interactive Features */}
+          <View style={styles.featuresContainer}>
+            {/* Voice Chat Button */}
+            {userPreferences.realTimeChatEnabled && (
+              <View style={styles.featureButton}>
+                <VoiceChatButton />
+              </View>
+            )}
+
+            {/* Video Oracle Button */}
+            {isTavusAvailable && isPersonaVideoEnabled(selectedPersona.id) && (
+              <TouchableOpacity
+                style={[styles.videoOracleButton, { borderColor: colors.accent, backgroundColor: colors.glassGolden }]}
+                onPress={handleVideoOracleToggle}
+                disabled={isConnecting}
+              >
+                <Video color={colors.accent} size={20} />
+                <Text style={[styles.videoOracleText, { color: colors.accent, fontFamily: fonts.body }]}>
+                  {isConnected ? t('home.videoOracle.end', 'End Video') : t('home.videoOracle.start', 'Video Oracle')}
+                </Text>
+                {!canAccessPremiumFeatures && (
+                  <Crown color={colors.accent} size={16} />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* Omen Display or Generation */}
           {currentOmen ? (
@@ -328,7 +453,7 @@ export default function HomeScreen() {
                   <View style={styles.adviceHeader}>
                     <Sparkles color={colors.accent} size={16} />
                     <Text style={[styles.adviceLabel, { color: colors.accent, fontFamily: fonts.body }]}>
-                      Mystical Guidance
+                      {t('home.omen.guidance', 'Mystical Guidance')}
                     </Text>
                   </View>
                   <Text style={[styles.advice, { color: colors.text, fontFamily: fonts.body }]}>
@@ -339,7 +464,7 @@ export default function HomeScreen() {
                 <View style={styles.omenMeta}>
                   <View style={styles.metaItem}>
                     <Text style={[styles.metaLabel, { color: colors.textTertiary, fontFamily: fonts.body }]}>
-                      Cosmic Resonance
+                      {t('home.omen.resonance', 'Cosmic Resonance')}
                     </Text>
                     <Text style={[styles.confidence, { color: colors.accent, fontFamily: fonts.body }]}>
                       {Math.round(currentOmen.confidence * 100)}%
@@ -347,10 +472,10 @@ export default function HomeScreen() {
                   </View>
                   <View style={styles.metaItem}>
                     <Text style={[styles.metaLabel, { color: colors.textTertiary, fontFamily: fonts.body }]}>
-                      Category
+                      {t('home.omen.category', 'Category')}
                     </Text>
                     <Text style={[styles.category, { color: colors.accentSecondary, fontFamily: fonts.body }]}>
-                      #{currentOmen.category}
+                      #{t(`categories.${currentOmen.category}`, currentOmen.category)}
                     </Text>
                   </View>
                 </View>
@@ -358,7 +483,7 @@ export default function HomeScreen() {
                 {isPlayingVoice && (
                   <View style={[styles.playingIndicator, { backgroundColor: colors.glassGolden, borderColor: colors.borderGolden }]}>
                     <Text style={[styles.playingText, { color: colors.accent, fontFamily: fonts.body }]}>
-                      🎵 Oracle speaking mystical wisdom...
+                      {t('home.omen.speaking', '🎵 Oracle speaking mystical wisdom...')}
                     </Text>
                   </View>
                 )}
@@ -377,10 +502,10 @@ export default function HomeScreen() {
               <View style={styles.emptyOmenContent}>
                 <Text style={[styles.emptyOmenSymbol, { fontSize: 100 }]}>🔮</Text>
                 <Text style={[styles.emptyOmenText, { color: colors.text, fontFamily: fonts.title }]}>
-                  The Oracle Awaits...
+                  {t('home.oracle.awaits', 'The Oracle Awaits...')}
                 </Text>
                 <Text style={[styles.emptyOmenSubtext, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                  Touch the mystical crystal to receive your cosmic guidance
+                  {t('home.oracle.instruction', 'Touch the mystical crystal to receive your cosmic guidance')}
                 </Text>
                 <View style={styles.mysticalElements}>
                   <Text style={styles.mysticalSymbol}>✨</Text>
@@ -394,7 +519,7 @@ export default function HomeScreen() {
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
             <MagicalButton
-              title={isGenerating ? "Consulting the Cosmic Forces..." : "Receive Oracle"}
+              title={isGenerating ? t('home.oracle.generating', 'Consulting the Cosmic Forces...') : t('home.oracle.receive', 'Receive Oracle')}
               onPress={generateOmen}
               disabled={isGenerating || hasReachedLimit}
               size="large"
@@ -410,11 +535,11 @@ export default function HomeScreen() {
                 onPress={() => router.push('/(tabs)/premium')}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel="Unlock unlimited mystical wisdom"
+                accessibilityLabel={t('home.upgrade.accessibility', 'Unlock unlimited mystical wisdom')}
               >
                 <Crown color={colors.accent} size={20} />
                 <Text style={[styles.upgradeHintText, { color: colors.accent, fontFamily: fonts.body }]}>
-                  Unlock unlimited mystical wisdom
+                  {t('home.upgrade.text', 'Unlock unlimited mystical wisdom')}
                 </Text>
                 <Sparkles color={colors.accent} size={16} />
               </TouchableOpacity>
@@ -422,6 +547,9 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Video Oracle Modal */}
+      {renderVideoModal()}
     </LinearGradient>
   );
 }
@@ -525,9 +653,28 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     letterSpacing: 1,
   },
-  voiceChatContainer: {
+  featuresContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
+    gap: 16,
+  },
+  featureButton: {
+    alignItems: 'center',
+  },
+  videoOracleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 2,
+    borderRadius: 25,
+    gap: 8,
+  },
+  videoOracleText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   omenCard: {
     marginBottom: 40,
@@ -681,7 +828,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     zIndex: 1000,
-    // Ensure proper spacing and z-index for web
     ...Platform.select({
       web: {
         zIndex: 100,
@@ -692,7 +838,6 @@ const styles = StyleSheet.create({
   oracleButton: {
     alignSelf: 'center',
     minWidth: width * 0.7,
-    // Ensure button is properly positioned and clickable on web
     ...Platform.select({
       web: {
         position: 'relative',
@@ -708,7 +853,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
     borderWidth: 1,
-    // Web-specific fixes for clickability
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -723,11 +867,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 12,
     fontWeight: '500',
-    // Prevent text selection on web
     ...Platform.select({
       web: {
         userSelect: 'none',
       },
     }),
+  },
+  // Video Modal Styles
+  modalContainer: {
+    flex: 1,
+  },
+  modalSafeArea: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 8,
+    borderWidth: 1,
+    borderRadius: 20,
+  },
+  videoContainer: {
+    flex: 1,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  videoViewer: {
+    flex: 1,
+  },
+  modalControls: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  videoControlButton: {
+    minWidth: 200,
   },
 });

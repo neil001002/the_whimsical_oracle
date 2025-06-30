@@ -13,7 +13,7 @@ interface LanguageContextType {
   supportedLanguages: typeof SUPPORTED_LANGUAGES;
   changeLanguage: (locale: string) => Promise<void>;
   isRTL: boolean;
-  t: (key: string, params?: Record<string, any>) => string;
+  t: (key: string, fallback?: string, params?: Record<string, any>) => string;
   isLoading: boolean;
   error: string | null;
 }
@@ -21,7 +21,7 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const { t, i18n } = useTranslation();
+  const { t: i18nT, i18n } = useTranslation();
   const [currentLanguage, setCurrentLanguage] = useState(getCurrentLanguage());
   const [isRTLLayout, setIsRTLLayout] = useState(isRTL(getCurrentLanguage()));
   const [isLoading, setIsLoading] = useState(false);
@@ -56,6 +56,21 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       setError('Failed to change language');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Enhanced translation function with fallback support
+  const t = (key: string, fallback?: string, params?: Record<string, any>): string => {
+    try {
+      const translation = i18nT(key, params);
+      // If translation equals the key, it means no translation was found
+      if (translation === key && fallback) {
+        return fallback;
+      }
+      return translation;
+    } catch (error) {
+      console.warn(`Translation error for key "${key}":`, error);
+      return fallback || key;
     }
   };
 

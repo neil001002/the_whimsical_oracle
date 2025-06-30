@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
@@ -41,6 +42,7 @@ interface PremiumFeature {
 
 export default function PremiumScreen() {
   const { colors, fonts } = useTheme();
+  const { t } = useLanguage();
   const { 
     subscriptionStatus, 
     availablePackages, 
@@ -59,64 +61,64 @@ export default function PremiumScreen() {
   const features: PremiumFeature[] = [
     {
       icon: <Zap color={colors.accent} size={24} />,
-      title: 'Daily Oracle Readings',
-      description: 'Receive mystical guidance every day',
+      title: t('premium.features.dailyReadings', 'Daily Oracle Readings'),
+      description: t('premium.features.dailyReadingsDesc', 'Receive mystical guidance every day'),
       free: true,
       premium: true,
       mystic: true,
     },
     {
       icon: <Star color={colors.accent} size={24} />,
-      title: 'Multiple Oracle Personas',
-      description: 'Choose from 5 unique mystical guides',
+      title: t('premium.features.personas', 'Multiple Oracle Personas'),
+      description: t('premium.features.personasDesc', 'Choose from 5 unique mystical guides'),
       free: true,
       premium: true,
       mystic: true,
     },
     {
       icon: <Sparkles color={colors.accent} size={24} />,
-      title: 'Voice Narration',
-      description: 'Hear your omens spoken aloud',
+      title: t('premium.features.voice', 'Voice Narration'),
+      description: t('premium.features.voiceDesc', 'Hear your omens spoken aloud'),
       free: true,
       premium: true,
       mystic: true,
     },
     {
       icon: <Infinity color={colors.accent} size={24} />,
-      title: 'Unlimited Readings',
-      description: 'No daily limits on oracle consultations',
+      title: t('premium.features.unlimited', 'Unlimited Readings'),
+      description: t('premium.features.unlimitedDesc', 'No daily limits on oracle consultations'),
       free: false,
       premium: true,
       mystic: true,
     },
     {
       icon: <Crown color={colors.accent} size={24} />,
-      title: 'Premium Personas',
-      description: 'Access to exclusive mystical guides',
+      title: t('premium.features.premiumPersonas', 'Premium Personas'),
+      description: t('premium.features.premiumPersonasDesc', 'Access to exclusive mystical guides'),
       free: false,
       premium: true,
       mystic: true,
     },
     {
       icon: <Shield color={colors.accent} size={24} />,
-      title: 'Advanced Interpretations',
-      description: 'Deeper insights and detailed guidance',
+      title: t('premium.features.advanced', 'Advanced Interpretations'),
+      description: t('premium.features.advancedDesc', 'Deeper insights and detailed guidance'),
       free: false,
       premium: true,
       mystic: true,
     },
     {
       icon: <Sparkles color={colors.accent} size={24} />,
-      title: 'Real-time Voice Chat',
-      description: 'Interactive conversations with oracles',
+      title: t('premium.features.realTimeChat', 'Real-time Voice Chat'),
+      description: t('premium.features.realTimeChatDesc', 'Interactive conversations with oracles'),
       free: false,
       premium: false,
       mystic: true,
     },
     {
       icon: <Star color={colors.accent} size={24} />,
-      title: 'Cosmic Calendar',
-      description: 'Astrological timing for readings',
+      title: t('premium.features.cosmicCalendar', 'Cosmic Calendar'),
+      description: t('premium.features.cosmicCalendarDesc', 'Astrological timing for readings'),
       free: false,
       premium: false,
       mystic: true,
@@ -127,7 +129,7 @@ export default function PremiumScreen() {
     const packageToPurchase = availablePackages.find(pkg => pkg.identifier === packageId);
     
     if (!packageToPurchase) {
-      Alert.alert('Error', 'Package not found');
+      Alert.alert(t('common.error', 'Error'), t('premium.errors.packageNotFound', 'Package not found'));
       return;
     }
 
@@ -138,16 +140,16 @@ export default function PremiumScreen() {
       
       if (success) {
         Alert.alert(
-          'Purchase Successful! 🎉',
-          'Welcome to your enhanced mystical journey! Your premium features are now active.',
-          [{ text: 'Continue', style: 'default' }]
+          t('premium.success.title', 'Purchase Successful! 🎉'),
+          t('premium.success.message', 'Welcome to your enhanced mystical journey! Your premium features are now active.'),
+          [{ text: t('common.continue', 'Continue'), style: 'default' }]
         );
       }
     } catch (error) {
       Alert.alert(
-        'Purchase Failed',
-        'Unable to complete your purchase. Please try again.',
-        [{ text: 'OK', style: 'default' }]
+        t('premium.errors.purchaseFailed', 'Purchase Failed'),
+        t('premium.errors.purchaseFailedMessage', 'Unable to complete your purchase. Please try again.'),
+        [{ text: t('common.ok', 'OK'), style: 'default' }]
       );
     } finally {
       setPurchasingPackageId(null);
@@ -158,15 +160,15 @@ export default function PremiumScreen() {
     try {
       await restorePurchases();
       Alert.alert(
-        'Restore Complete',
-        'Your purchases have been restored successfully!',
-        [{ text: 'OK', style: 'default' }]
+        t('premium.restore.title', 'Restore Complete'),
+        t('premium.restore.message', 'Your purchases have been restored successfully!'),
+        [{ text: t('common.ok', 'OK'), style: 'default' }]
       );
     } catch (error) {
       Alert.alert(
-        'Restore Failed',
-        'Unable to restore purchases. Please try again.',
-        [{ text: 'OK', style: 'default' }]
+        t('premium.errors.restoreFailed', 'Restore Failed'),
+        t('premium.errors.restoreFailedMessage', 'Unable to restore purchases. Please try again.'),
+        [{ text: t('common.ok', 'OK'), style: 'default' }]
       );
     }
   };
@@ -174,28 +176,28 @@ export default function PremiumScreen() {
   const renderFeatureComparison = () => (
     <MysticalCard style={styles.comparisonCard}>
       <Text style={[styles.comparisonTitle, { color: colors.text, fontFamily: fonts.title }]}>
-        Feature Comparison
+        {t('premium.comparison.title', 'Feature Comparison')}
       </Text>
       
       <View style={styles.comparisonHeader}>
         <View style={styles.featureColumn}>
           <Text style={[styles.columnHeader, { color: colors.text, fontFamily: fonts.body }]}>
-            Feature
+            {t('premium.comparison.feature', 'Feature')}
           </Text>
         </View>
         <View style={styles.planColumn}>
           <Text style={[styles.columnHeader, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            Free
+            {t('premium.comparison.free', 'Free')}
           </Text>
         </View>
         <View style={styles.planColumn}>
           <Text style={[styles.columnHeader, { color: colors.accent, fontFamily: fonts.body }]}>
-            Premium
+            {t('premium.comparison.premium', 'Premium')}
           </Text>
         </View>
         <View style={styles.planColumn}>
           <Text style={[styles.columnHeader, { color: colors.accent, fontFamily: fonts.body }]}>
-            Mystic
+            {t('premium.comparison.mystic', 'Mystic')}
           </Text>
         </View>
       </View>
@@ -254,20 +256,20 @@ export default function PremiumScreen() {
         {tier.popular && (
           <View style={[styles.popularBadge, { backgroundColor: colors.accent }]}>
             <Text style={[styles.popularText, { color: colors.background, fontFamily: fonts.body }]}>
-              Most Popular
+              {t('premium.mostPopular', 'Most Popular')}
             </Text>
           </View>
         )}
         
         <View style={styles.cardHeader}>
           <Text style={[styles.tierName, { color: colors.text, fontFamily: fonts.title }]}>
-            {tier.name}
+            {t(`premium.tiers.${tier.id}.name`, tier.name)}
           </Text>
           <Text style={[styles.tierPrice, { color: colors.accent, fontFamily: fonts.title }]}>
-            {availablePackage ? availablePackage.product.priceString : tier.price}
+            {availablePackage ? availablePackage.product.priceString : t(`premium.tiers.${tier.id}.price`, tier.price)}
           </Text>
           <Text style={[styles.tierDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-            {tier.description}
+            {t(`premium.tiers.${tier.id}.description`, tier.description)}
           </Text>
         </View>
 
@@ -276,20 +278,20 @@ export default function PremiumScreen() {
             <View key={index} style={styles.featureItem}>
               <Check color={colors.success} size={16} />
               <Text style={[styles.featureText, { color: colors.text, fontFamily: fonts.body }]}>
-                {feature}
+                {t(`premium.features.${feature}`, feature)}
               </Text>
             </View>
           ))}
           {tier.features.length > 4 && (
             <Text style={[styles.moreFeatures, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              +{tier.features.length - 4} more features
+              {t('premium.moreFeatures', '+{{count}} more features', { count: tier.features.length - 4 })}
             </Text>
           )}
         </View>
 
         {tier.id === 'free' ? (
           <MagicalButton
-            title={isCurrentTier ? 'Current Plan' : 'Free Forever'}
+            title={isCurrentTier ? t('premium.currentPlan', 'Current Plan') : t('premium.freeForever', 'Free Forever')}
             onPress={() => {}}
             disabled={true}
             variant="secondary"
@@ -298,9 +300,9 @@ export default function PremiumScreen() {
         ) : (
           <MagicalButton
             title={
-              isPurchasing ? 'Processing...' : 
-              isCurrentTier ? 'Current Plan' : 
-              `Upgrade to ${tier.name}`
+              isPurchasing ? t('premium.processing', 'Processing...') : 
+              isCurrentTier ? t('premium.currentPlan', 'Current Plan') : 
+              t('premium.upgradeTo', 'Upgrade to {{tier}}', { tier: tier.name })
             }
             onPress={() => handlePurchase(tier.productId)}
             disabled={isPurchasing || isCurrentTier || !availablePackage}
@@ -323,7 +325,7 @@ export default function PremiumScreen() {
           <View style={styles.loadingContainer}>
             <LoadingSpinner color={colors.accent} size={60} />
             <Text style={[styles.loadingText, { color: colors.text, fontFamily: fonts.body }]}>
-              Loading mystical offerings...
+              {t('premium.loading', 'Loading mystical offerings...')}
             </Text>
           </View>
         </SafeAreaView>
@@ -346,10 +348,10 @@ export default function PremiumScreen() {
           <View style={styles.header}>
             <Crown color={colors.accent} size={40} />
             <Text style={[styles.title, { color: colors.text, fontFamily: fonts.title }]}>
-              Unlock Mystical Powers
+              {t('premium.title', 'Unlock Mystical Powers')}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Choose your path to deeper wisdom
+              {t('premium.subtitle', 'Choose your path to deeper wisdom')}
             </Text>
           </View>
 
@@ -360,7 +362,7 @@ export default function PremiumScreen() {
                 {error}
               </Text>
               <MagicalButton
-                title="Retry"
+                title={t('common.retry', 'Retry')}
                 onPress={refreshSubscriptionStatus}
                 variant="secondary"
                 size="small"
@@ -373,10 +375,10 @@ export default function PremiumScreen() {
           {!isRevenueCatAvailable && (
             <MysticalCard style={styles.statusCard}>
               <Text style={[styles.statusTitle, { color: colors.warning, fontFamily: fonts.title }]}>
-                Development Mode
+                {t('premium.developmentMode', 'Development Mode')}
               </Text>
               <Text style={[styles.statusText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                RevenueCat is not available in this environment. Subscription features are simulated for development purposes.
+                {t('premium.developmentModeDesc', 'RevenueCat is not available in this environment. Subscription features are simulated for development purposes.')}
               </Text>
             </MysticalCard>
           )}
@@ -385,22 +387,22 @@ export default function PremiumScreen() {
           <MysticalCard style={styles.statusCard}>
             <View style={styles.statusContent}>
               <Text style={[styles.statusTitle, { color: colors.text, fontFamily: fonts.title }]}>
-                Current Plan
+                {t('premium.currentPlan', 'Current Plan')}
               </Text>
               <Text style={[styles.statusPlan, { color: colors.accent, fontFamily: fonts.title }]}>
-                {subscriptionStatus.tier.toUpperCase()} TIER
+                {subscriptionStatus.tier.toUpperCase()} {t('premium.tier', 'TIER')}
               </Text>
               <Text style={[styles.statusDescription, { color: colors.textSecondary, fontFamily: fonts.body }]}>
                 {subscriptionStatus.tier === 'free' 
-                  ? 'Access to basic oracle features'
+                  ? t('premium.descriptions.free', 'Access to basic oracle features')
                   : subscriptionStatus.tier === 'premium'
-                    ? 'Enhanced mystical capabilities'
-                    : 'Complete oracle mastery'
+                    ? t('premium.descriptions.premium', 'Enhanced mystical capabilities')
+                    : t('premium.descriptions.mystic', 'Complete oracle mastery')
                 }
               </Text>
               {subscriptionStatus.expirationDate && (
                 <Text style={[styles.expirationText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-                  {subscriptionStatus.willRenew ? 'Renews' : 'Expires'} on{' '}
+                  {subscriptionStatus.willRenew ? t('premium.renews', 'Renews') : t('premium.expires', 'Expires')} {t('premium.on', 'on')}{' '}
                   {subscriptionStatus.expirationDate.toLocaleDateString()}
                 </Text>
               )}
@@ -410,7 +412,7 @@ export default function PremiumScreen() {
           {/* Subscription Tiers */}
           <View style={styles.tiersContainer}>
             <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.title }]}>
-              Choose Your Mystical Path
+              {t('premium.choosePath', 'Choose Your Mystical Path')}
             </Text>
             <ScrollView 
               horizontal 
@@ -427,24 +429,24 @@ export default function PremiumScreen() {
           {/* Restore Purchases */}
           <View style={styles.restoreContainer}>
             <MagicalButton
-              title="Restore Purchases"
+              title={t('premium.restorePurchases', 'Restore Purchases')}
               onPress={handleRestorePurchases}
               variant="secondary"
               size="medium"
               style={styles.restoreButton}
             />
             <Text style={[styles.restoreText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Already purchased? Restore your mystical powers
+              {t('premium.restoreText', 'Already purchased? Restore your mystical powers')}
             </Text>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              All subscriptions include a 7-day free trial
+              {t('premium.footer.trial', 'All subscriptions include a 7-day free trial')}
             </Text>
             <Text style={[styles.footerSubtext, { color: colors.textSecondary, fontFamily: fonts.body }]}>
-              Cancel anytime • Secure payments • No hidden fees
+              {t('premium.footer.terms', 'Cancel anytime • Secure payments • No hidden fees')}
             </Text>
           </View>
         </ScrollView>

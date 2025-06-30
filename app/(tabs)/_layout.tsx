@@ -1,7 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Image } from 'react-native';
-import { Video } from 'lucide-react-native';
 
 // Import PNG icons
 import HomePng from '../../assets/icons/Home_icon.png';
@@ -21,13 +20,14 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.glassStrong,
           borderTopWidth: 1,
-          height: 75,
+          height: 85,
           paddingTop: 10,
+          paddingBottom: 10,
         },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
           marginTop: 4,
         },
@@ -36,27 +36,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Oracle',
           tabBarIcon: ({ color, size, focused }) => (
             <Image
               source={HomePng}
               style={{
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
               }}
               resizeMode="contain"
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="video-oracle"
-        options={{
-          title: 'Video Oracle',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Video 
-              color={focused ? colors.accent : colors.textSecondary} 
-              size={36} 
             />
           ),
         }}
@@ -69,8 +57,8 @@ export default function TabsLayout() {
             <Image
               source={HistoryPng}
               style={{
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
               }}
               resizeMode="contain"
             />
@@ -85,8 +73,8 @@ export default function TabsLayout() {
             <Image
               source={PremiumPng}
               style={{
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
               }}
               resizeMode="contain"
             />
@@ -101,8 +89,8 @@ export default function TabsLayout() {
             <Image
               source={ProfilePng}
               style={{
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
               }}
               resizeMode="contain"
             />
@@ -117,8 +105,8 @@ export default function TabsLayout() {
             <Image
               source={SettingsPng}
               style={{
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
               }}
               resizeMode="contain"
             />
