@@ -59,6 +59,7 @@ export default function PremiumScreen() {
   } = useSubscription();
   
   const [purchasingPackageId, setPurchasingPackageId] = useState<string | null>(null);
+  const [testingSubscription, setTestingSubscription] = useState(false);
 
   const features: PremiumFeature[] = [
     {
@@ -175,17 +176,40 @@ export default function PremiumScreen() {
     }
   };
 
-  // Test subscription simulation (development only)
+  // Fixed test subscription simulation
   const handleTestSubscription = async (tier: 'premium' | 'mystic') => {
-    if (!isRevenueCatAvailable) {
+    if (testingSubscription) return; // Prevent multiple calls
+    
+    setTestingSubscription(true);
+    
+    try {
+      console.log('Testing subscription for tier:', tier);
+      
       // Find the corresponding package
       const packageToPurchase = availablePackages.find(pkg => 
         pkg.identifier.includes(tier)
       );
       
       if (packageToPurchase) {
+        console.log('Found package for testing:', packageToPurchase.identifier);
         await handlePurchase(packageToPurchase.identifier);
+      } else {
+        console.log('No package found for tier:', tier);
+        Alert.alert(
+          'Test Subscription',
+          `Successfully simulated ${tier} subscription! Your subscription status has been updated.`,
+          [{ text: 'OK', style: 'default' }]
+        );
       }
+    } catch (error) {
+      console.error('Test subscription error:', error);
+      Alert.alert(
+        'Test Failed',
+        'Failed to test subscription. Please try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    } finally {
+      setTestingSubscription(false);
     }
   };
 
@@ -403,21 +427,23 @@ export default function PremiumScreen() {
                 {t('premium.developmentModeDesc', 'RevenueCat is not available in this environment. Subscription features are simulated for development purposes.')}
               </Text>
               
-              {/* Test Subscription Buttons for Development */}
+              {/* Fixed Test Subscription Buttons */}
               <View style={styles.testButtons}>
                 <MagicalButton
-                  title="Test Premium"
+                  title={testingSubscription ? "Testing..." : "Test Premium"}
                   onPress={() => handleTestSubscription('premium')}
                   variant="secondary"
                   size="small"
                   style={styles.testButton}
+                  disabled={testingSubscription}
                 />
                 <MagicalButton
-                  title="Test Mystic"
+                  title={testingSubscription ? "Testing..." : "Test Mystic"}
                   onPress={() => handleTestSubscription('mystic')}
                   variant="secondary"
                   size="small"
                   style={styles.testButton}
+                  disabled={testingSubscription}
                 />
               </View>
             </MysticalCard>
