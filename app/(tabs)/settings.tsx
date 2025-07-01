@@ -30,6 +30,7 @@ import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
 import { LanguageSelector } from '@/components/ui/LanguageSelector';
+import { BoltBadge } from '@/components/ui/BoltBadge';
 import { ORACLE_PERSONAS } from '@/constants/OraclePersonas';
 
 export default function SettingsScreen() {
@@ -302,6 +303,12 @@ export default function SettingsScreen() {
     </MysticalCard>
   );
 
+  const renderBoltBadge = () => (
+    <View style={styles.badgeContainer}>
+      <BoltBadge variant="cosmic" size="medium" />
+    </View>
+  );
+
   return (
     <LinearGradient
       colors={[colors.background, colors.surface]}
@@ -327,6 +334,7 @@ export default function SettingsScreen() {
           {renderVoiceSettings()}
           {renderPreferences()}
           {renderSubscription()}
+          {renderBoltBadge()}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -504,5 +512,10 @@ const styles = StyleSheet.create({
   },
   upgradeButton: {
     alignSelf: 'center',
+  },
+  badgeContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
   },
 });

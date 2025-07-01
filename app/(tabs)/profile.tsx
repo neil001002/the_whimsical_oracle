@@ -18,6 +18,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
+import { BoltBadge } from '@/components/ui/BoltBadge';
 
 interface UserStats {
   totalReadings: number;
@@ -341,6 +342,12 @@ export default function ProfileScreen() {
     </MysticalCard>
   );
 
+  const renderBoltBadge = () => (
+    <View style={styles.badgeContainer}>
+      <BoltBadge variant="cosmic" size="small" />
+    </View>
+  );
+
   return (
     <LinearGradient
       colors={[colors.background, colors.surface]}
@@ -373,6 +380,8 @@ export default function ProfileScreen() {
             variant="secondary"
             style={styles.signOutButton}
           />
+
+          {renderBoltBadge()}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -598,5 +607,10 @@ const styles = StyleSheet.create({
   signOutButton: {
     alignSelf: 'center',
     marginTop: 20,
+    marginBottom: 20,
+  },
+  badgeContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
 });

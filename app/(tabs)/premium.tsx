@@ -29,6 +29,7 @@ import { MysticalCard } from '@/components/ui/MysticalCard';
 import { MagicalButton } from '@/components/ui/MagicalButton';
 import { StarField } from '@/components/ui/StarField';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { BoltBadge } from '@/components/ui/BoltBadge';
 
 const { width } = Dimensions.get('window');
 
@@ -329,6 +330,12 @@ export default function PremiumScreen() {
     );
   };
 
+  const renderBoltBadge = () => (
+    <View style={styles.badgeContainer}>
+      <BoltBadge variant="cosmic" size="small" />
+    </View>
+  );
+
   if (isLoading) {
     return (
       <LinearGradient
@@ -482,6 +489,8 @@ export default function PremiumScreen() {
               {t('premium.footer.terms', 'Cancel anytime • Secure payments • No hidden fees')}
             </Text>
           </View>
+
+          {renderBoltBadge()}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -723,5 +732,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     opacity: 0.7,
+  },
+  badgeContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
 });
