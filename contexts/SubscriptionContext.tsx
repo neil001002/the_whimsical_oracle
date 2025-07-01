@@ -86,7 +86,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       const apiKey = getRevenueCatApiKey();
       
       if (!apiKey && isRevenueCatAvailable) {
-        throw new Error('RevenueCat API key not configured');
+        console.log('RevenueCat API key not configured, using mock implementation');
       }
       
       // Configure RevenueCat

@@ -15,6 +15,7 @@ module.exports = {
   assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: true,
+    bundleIdentifier: 'com.whimsicaloracle.app',
   },
   android: {
     package: 'com.whimsicaloracle.app',
@@ -22,6 +23,14 @@ module.exports = {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#0F0F23',
     },
+    permissions: [
+      'android.permission.RECORD_AUDIO',
+      'android.permission.MODIFY_AUDIO_SETTINGS',
+      'android.permission.INTERNET',
+      'android.permission.ACCESS_NETWORK_STATE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android.permission.READ_EXTERNAL_STORAGE',
+    ],
   },
   web: {
     bundler: 'metro',
@@ -31,8 +40,21 @@ module.exports = {
   plugins: [
     'expo-router',
     'expo-font',
-    'expo-secure-store',
-    'expo-web-browser',
+    'expo-av',
+    [
+      'expo-build-properties',
+      {
+        android: {
+          minSdkVersion: 24,
+          compileSdkVersion: 34,
+          targetSdkVersion: 34,
+          buildToolsVersion: '34.0.0',
+        },
+        ios: {
+          deploymentTarget: '13.0',
+        },
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

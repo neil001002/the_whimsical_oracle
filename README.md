@@ -12,9 +12,10 @@ A mystical oracle app that provides cosmic wisdom and spiritual guidance through
 - **Time Weaver**: Temporal guardian connecting past, present, and future
 
 ### 🎙️ Advanced Voice Features
-- **Text-to-Speech**: Native TTS on mobile, Web Speech API on web
-- **Voice Chat**: Real-time voice conversations with oracles (requires custom build)
+- **ElevenLabs AI Voice**: Premium AI-generated voices via secure API routes
+- **Native TTS Fallback**: Automatic fallback to device speech synthesis
 - **Persona-specific Voice Styles**: Each oracle has unique voice characteristics
+- **Cross-platform Audio**: Works on both mobile and web
 
 ### 📹 Video Oracle Sessions
 - **AI-Powered Video Conversations**: Face-to-face interactions with oracle personas
@@ -40,7 +41,7 @@ A mystical oracle app that provides cosmic wisdom and spiritual guidance through
 ## 🚀 Technology Stack
 
 ### Frontend
-- **React Native** with Expo SDK 52
+- **React Native** with Expo SDK 53
 - **Expo Router** for navigation
 - **TypeScript** for type safety
 - **React Native Reanimated** for smooth animations
@@ -48,7 +49,7 @@ A mystical oracle app that provides cosmic wisdom and spiritual guidance through
 
 ### Backend & Services
 - **Supabase** for database and authentication
-- **LiveKit** for real-time voice chat
+- **ElevenLabs** for AI voice generation
 - **Tavus AI** for video oracle conversations
 - **RevenueCat** for subscription management
 - **i18next** for internationalization
@@ -64,7 +65,7 @@ A mystical oracle app that provides cosmic wisdom and spiritual guidance through
 |---------|-----|-----|---------|---------|
 | Basic Oracle | ✅ | ✅ | ✅ | ✅ |
 | Voice TTS | ✅ | ✅ | ✅ | ✅ |
-| Voice Chat | ❌ | ✅* | ✅* | ❌ |
+| ElevenLabs Voice | ✅ | ✅ | ✅ | ❌ |
 | Video Oracle | ✅ | ✅* | ✅* | ❌ |
 | Subscriptions | ❌ | ✅* | ✅* | ❌ |
 
@@ -96,16 +97,17 @@ cp .env.example .env
 EXPO_PUBLIC_SUPABASE_URL=your-supabase-url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
-# LiveKit (for voice chat)
-EXPO_PUBLIC_LIVEKIT_URL=your-livekit-url
-EXPO_PUBLIC_LIVEKIT_API_KEY=your-livekit-api-key
-EXPO_PUBLIC_LIVEKIT_API_SECRET=your-livekit-api-secret
+# ElevenLabs (for AI voice)
+EXPO_PUBLIC_ELEVENLABS_API_KEY=your-elevenlabs-api-key
 
 # Tavus (for video oracle)
 EXPO_PUBLIC_TAVUS_API_KEY=your-tavus-api-key
 
 # RevenueCat (for subscriptions)
 EXPO_PUBLIC_REVENUECAT_API_KEY=your-revenuecat-api-key
+
+# API Base URL (for production mobile builds)
+EXPO_PUBLIC_API_BASE_URL=https://your-app.netlify.app
 ```
 
 ### Running the App
@@ -126,9 +128,12 @@ npm run dev:android
 
 ## 🏗️ Building for Production
 
-### Web Deployment
+### Web Deployment (Netlify)
 ```bash
+# Build for web
 npm run build:web
+
+# Deploy to Netlify (automatic via git integration)
 ```
 
 ### Mobile Apps (Custom Development Build)
@@ -138,7 +143,8 @@ eas login
 eas build:configure
 
 # Build for Android
-npm run build:android
+npm run build:android-preview  # For testing
+npm run build:android-production  # For Play Store
 
 # Build for iOS
 eas build --platform ios --profile production
@@ -146,53 +152,80 @@ eas build --platform ios --profile production
 
 ## 🎯 Key Features Implementation
 
-### Oracle Generation System
-- **Smart Content**: Tier-based content (basic vs premium phrases)
-- **Persona Integration**: Each oracle has unique response patterns
-- **Confidence Scoring**: AI-like confidence ratings for mystical authenticity
-- **Category System**: Career, relationships, health, creativity, finance, growth
-
 ### Voice System Architecture
-- **Platform Detection**: Automatic fallback to appropriate TTS system
-- **Persona Voice Mapping**: Each oracle has unique voice characteristics
-- **Error Handling**: Graceful degradation when voice services unavailable
-- **Real-time Chat**: LiveKit integration for interactive conversations
+- **API Routes**: Secure server-side ElevenLabs API calls via `/api/elevenlabs-tts+api.ts`
+- **Platform Detection**: Automatic audio handling for web vs mobile
+- **Fallback System**: Native TTS when ElevenLabs unavailable
+- **Error Handling**: Comprehensive error recovery and user feedback
 
-### Video Oracle Technology
-- **Tavus AI Integration**: Lifelike AI video conversations
-- **Session Management**: Proper connection handling and cleanup
-- **Premium Gating**: Video features restricted to paid subscribers
-- **Cross-platform**: Works on web and mobile with proper builds
+### Mobile Audio Implementation
+- **expo-av**: Audio.Sound for mobile platforms
+- **HTMLAudioElement**: For web platforms
+- **Base64 Audio**: Blob to base64 conversion for mobile compatibility
+- **Audio Permissions**: Proper Android permissions for audio playback
+
+### Web Deployment Features
+- **Server Output**: Expo Router server mode for API routes
+- **Netlify Functions**: Automatic serverless function deployment
+- **CORS Headers**: Proper cross-origin request handling
+- **Environment Variables**: Secure server-side API key management
 
 ### Subscription System
 - **RevenueCat Integration**: Industry-standard subscription management
-- **Tier-based Features**: Progressive feature unlocking
+- **Mock Implementation**: Development-friendly testing without RevenueCat
 - **Platform Compatibility**: Handles web limitations gracefully
-- **Restore Purchases**: Full purchase restoration support
+- **Error Recovery**: Comprehensive error handling and user feedback
+
+## 🔧 API Routes
+
+### ElevenLabs TTS API
+- **Endpoint**: `/api/elevenlabs-tts`
+- **Method**: POST
+- **Body**: `{ text: string, personaId: string }`
+- **Response**: Audio/MP3 or JSON error
+- **Security**: Server-side API key handling
+
+### Tavus Video API
+- **Endpoint**: `/api/tavus-conversation`
+- **Methods**: POST (create), GET (status), DELETE (end)
+- **Features**: Video conversation management
+- **Security**: Server-side API key handling
 
 ## 🔒 Security & Privacy
 
 - **Row Level Security**: Database-level access control
-- **Authentication**: Secure user authentication via Supabase
 - **API Key Protection**: Server-side API key management
+- **CORS Configuration**: Proper cross-origin security
 - **Data Encryption**: All data encrypted in transit and at rest
 
 ## 🌟 Unique Selling Points
 
 1. **Multi-modal Interaction**: Text, voice, and video oracle consultations
-2. **Personalized Experience**: 5 unique oracle personas with distinct personalities
-3. **Global Accessibility**: 12+ languages with cultural adaptations
-4. **Premium AI Features**: Advanced video conversations and real-time voice chat
-5. **Mystical Design**: Immersive cosmic theme with attention to detail
-6. **Cross-platform**: Seamless experience across web and mobile
+2. **AI-Powered Voices**: Premium ElevenLabs AI voice generation
+3. **Cross-platform Compatibility**: Seamless web and mobile experience
+4. **Secure API Architecture**: Server-side API routes for security
+5. **Fallback Systems**: Graceful degradation when services unavailable
+6. **Production Ready**: Comprehensive error handling and user feedback
 
 ## 📊 Performance Optimizations
 
 - **Lazy Loading**: Components and screens loaded on demand
-- **Image Optimization**: Efficient image loading and caching
-- **Animation Performance**: Hardware-accelerated animations
+- **Audio Caching**: Efficient audio loading and memory management
+- **API Route Optimization**: Minimal server response times
 - **Bundle Splitting**: Optimized bundle sizes for faster loading
-- **Offline Support**: Core features work without internet
+- **Error Boundaries**: Graceful error handling and recovery
+
+## 🚀 Deployment Instructions
+
+### Web (Netlify)
+1. Connect repository to Netlify
+2. Set environment variables in Netlify dashboard
+3. Deploy automatically via git push
+
+### Mobile (EAS Build)
+1. Configure environment variables in `eas.json`
+2. Run `eas build --platform android --profile production`
+3. Submit to Google Play Store
 
 ## 🎨 Design Philosophy
 
@@ -200,20 +233,7 @@ The app follows a "mystical minimalism" approach:
 - **Cosmic Color Palette**: Deep purples, cosmic blues, and mystical gold
 - **Smooth Animations**: Subtle, meaningful animations that enhance the mystical experience
 - **Typography**: Elegant serif fonts (Cinzel, Playfair Display) for mystical authenticity
-- **Spacing**: Generous white space for clarity and focus
 - **Accessibility**: High contrast ratios and screen reader support
-
-## 🚀 Future Roadmap
-
-- **AI Chat Integration**: GPT-powered conversational oracles
-- **Astrology Features**: Birth chart integration and cosmic timing
-- **Social Features**: Share readings and connect with other seekers
-- **Wearable Integration**: Apple Watch and Android Wear support
-- **AR/VR Experiences**: Immersive mystical environments
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
 
 ## 🤝 Contributing
 
