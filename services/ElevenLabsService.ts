@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { Audio } from 'expo-av';
+import { createAudioPlayer, AudioPlayer } from '@/lib/audio-player';
 
 export interface ElevenLabsConfig {
   apiKey: string;
@@ -22,27 +22,6 @@ export interface ElevenLabsVoice {
   preview_url?: string;
   available_for_tiers: string[];
 }
-
-// Helper function to get the correct API URL
-const getApiUrl = (path: string): string => {
-  // In development, use localhost
-  if (__DEV__) {
-    if (Platform.OS === 'web') {
-      return path; // Relative path for web in development
-    }
-    // For mobile in development, use the dev server URL
-    return `http://localhost:8081${path}`;
-  }
-  
-  // In production, use relative paths for web, absolute for mobile
-  if (Platform.OS === 'web') {
-    return path;
-  }
-  
-  // For mobile in production, you'll need to set your deployed URL
-  const productionUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://your-app.netlify.app';
-  return `${productionUrl}${path}`;
-};
 
 // Check if ElevenLabs is available
 const isElevenLabsAvailable = (): boolean => {
@@ -72,7 +51,7 @@ const getElevenLabsApiKey = (): string => {
 export class ElevenLabsService {
   private config: ElevenLabsConfig;
   private isAvailable: boolean;
-  private currentAudio: HTMLAudioElement | Audio.Sound | null = null;
+  private audioPlayer: AudioPlayer | null = null;
   private isPlaying: boolean = false;
 
   // Oracle persona to ElevenLabs voice mappings with verified working voice IDs
@@ -129,21 +108,7 @@ export class ElevenLabsService {
       apiKeyLength: apiKey.length,
       isAvailable: this.isAvailable,
       nativeTTSAvailable: this.isNativeTTSAvailable(),
-      platform: Platform.OS,
     });
-
-    // Configure audio for mobile platforms
-    if (Platform.OS !== 'web') {
-      Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      }).catch(error => {
-        console.warn('Failed to configure audio mode:', error);
-      });
-    }
   }
 
   // Check if ElevenLabs is available
@@ -172,7 +137,7 @@ export class ElevenLabsService {
     return this.voiceMappings[personaId] || this.voiceMappings['cosmic-sage'];
   }
 
-  // Generate speech using API route or fallback to native TTS
+  // Generate speech using ElevenLabs API or fallback to native TTS
   async generateSpeech(
     text: string,
     personaId: string,
@@ -185,20 +150,24 @@ export class ElevenLabsService {
       textLength: text.length,
       hasElevenLabs: this.isAvailable,
       hasNativeTTS: this.isNativeTTSAvailable(),
-      platform: Platform.OS,
     });
 
     // Stop any currently playing audio first
     await this.stopSpeech();
 
-    // Try ElevenLabs via API route first if available
+    // Try ElevenLabs first if available
     if (this.isAvailable && this.config.apiKey) {
       try {
-        console.log('🎵 Attempting ElevenLabs speech generation via API route...');
+        console.log('🎵 Attempting ElevenLabs speech generation...');
         await this.generateElevenLabsSpeech(text, personaId, onStart, onEnd, onError);
         return;
       } catch (error) {
         console.warn('🎵 ElevenLabs failed, falling back to native TTS:', error);
+        
+        // Check if it's an API limitation error
+        if (error instanceof Error && error.message.includes('unusual activity')) {
+          onError?.('ElevenLabs API temporarily unavailable. Using fallback voice synthesis.');
+        }
         // Continue to fallback
       }
     } else {
@@ -209,7 +178,7 @@ export class ElevenLabsService {
     await this.fallbackToNativeTTS(text, personaId, onStart, onEnd, onError);
   }
 
-  // Generate speech using ElevenLabs API via our API route
+  // Generate speech using ElevenLabs API
   private async generateElevenLabsSpeech(
     text: string,
     personaId: string,
@@ -218,44 +187,57 @@ export class ElevenLabsService {
     onError?: (error: string) => void
   ): Promise<void> {
     try {
-      console.log('🎵 Using ElevenLabs API route for speech generation');
-      onStart?.();
-      this.isPlaying = true;
-
-      const apiUrl = getApiUrl('/api/elevenlabs-tts');
-      console.log('🎵 API URL:', apiUrl);
+      console.log('🎵 Using ElevenLabs API for speech generation');
       
-      const response = await fetch(apiUrl, {
+      const voiceConfig = this.getVoiceConfig(personaId);
+      console.log('🎵 Voice config:', voiceConfig);
+      
+      const requestBody = {
+        text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: voiceConfig.stability,
+          similarity_boost: voiceConfig.similarityBoost,
+          style: voiceConfig.style || 0,
+          use_speaker_boost: voiceConfig.useSpeakerBoost || true,
+        },
+      };
+
+      console.log('🎵 ElevenLabs request:', {
+        url: `${this.config.baseUrl}/v1/text-to-speech/${voiceConfig.voiceId}`,
+        body: requestBody,
+      });
+      
+      const response = await fetch(`${this.config.baseUrl}/v1/text-to-speech/${voiceConfig.voiceId}`, {
         method: 'POST',
         headers: {
+          'Accept': 'audio/mpeg',
           'Content-Type': 'application/json',
+          'xi-api-key': this.config.apiKey,
         },
-        body: JSON.stringify({
-          text,
-          personaId,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      console.log('🎵 API response status:', response.status);
+      console.log('🎵 ElevenLabs response status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🎵 ElevenLabs API error response:', errorText);
         let errorData;
         try {
-          errorData = await response.json();
+          errorData = JSON.parse(errorText);
         } catch {
-          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+          errorData = { error: errorText };
         }
-        throw new Error(errorData.userMessage || errorData.error || 'API request failed');
+        
+        // Handle specific error types
+        if (errorData.detail?.status === 'detected_unusual_activity') {
+          throw new Error('ElevenLabs API temporarily unavailable due to usage restrictions. Please try again later or upgrade your plan.');
+        }
+        
+        throw new Error(`ElevenLabs API error (${response.status}): ${errorData.detail?.message || errorData.error || response.statusText}`);
       }
 
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        // Error response
-        const errorData = await response.json();
-        throw new Error(errorData.userMessage || errorData.error || 'API returned error');
-      }
-
-      // Success - we have audio data
       const audioBlob = await response.blob();
       console.log('🎵 ElevenLabs audio blob size:', audioBlob.size);
       
@@ -263,128 +245,32 @@ export class ElevenLabsService {
         throw new Error('ElevenLabs returned empty audio');
       }
 
-      // Play audio based on platform
-      if (Platform.OS === 'web') {
-        const audioUrl = URL.createObjectURL(audioBlob);
-        await this.playWebAudio(audioUrl, onEnd, onError);
-      } else {
-        // For mobile, we need to save the blob and play it
-        await this.playMobileAudio(audioBlob, onEnd, onError);
-      }
+      const audioUrl = URL.createObjectURL(audioBlob);
+      console.log('🎵 ElevenLabs audio generated successfully, playing...');
+
+      // Create audio player and play
+      this.audioPlayer = createAudioPlayer({
+        onStart,
+        onEnd: () => {
+          this.isPlaying = false;
+          this.audioPlayer = null;
+          onEnd?.();
+        },
+        onError: (error) => {
+          this.isPlaying = false;
+          this.audioPlayer = null;
+          onError?.(error);
+        },
+      });
+
+      this.isPlaying = true;
+      await this.audioPlayer.play(audioUrl);
 
     } catch (error) {
       console.error('🎵 ElevenLabs speech generation failed:', error);
       this.isPlaying = false;
+      this.audioPlayer = null;
       throw error; // Re-throw to trigger fallback
-    }
-  }
-
-  // Play audio on web platform
-  private async playWebAudio(
-    audioUrl: string,
-    onEnd?: () => void,
-    onError?: (error: string) => void
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.currentAudio && this.currentAudio instanceof HTMLAudioElement) {
-        this.currentAudio.pause();
-        this.currentAudio = null;
-      }
-
-      const audio = new Audio(audioUrl);
-      this.currentAudio = audio;
-
-      audio.onloadstart = () => {
-        console.log('🎵 Audio loading started');
-      };
-
-      audio.oncanplay = () => {
-        console.log('🎵 Audio can start playing');
-      };
-
-      audio.onplay = () => {
-        console.log('🎵 Audio playback started');
-      };
-
-      audio.onended = () => {
-        console.log('🎵 Audio playback ended');
-        this.isPlaying = false;
-        onEnd?.();
-        URL.revokeObjectURL(audioUrl);
-        this.currentAudio = null;
-        resolve();
-      };
-
-      audio.onerror = (event) => {
-        console.error('🎵 Audio playback error:', event);
-        this.isPlaying = false;
-        const errorMessage = 'Audio playback failed';
-        onError?.(errorMessage);
-        URL.revokeObjectURL(audioUrl);
-        this.currentAudio = null;
-        reject(new Error(errorMessage));
-      };
-
-      // Set volume and preload
-      audio.volume = 0.9;
-      audio.preload = 'auto';
-
-      // Start playing
-      audio.play().catch((playError) => {
-        console.error('🎵 Audio play failed:', playError);
-        this.isPlaying = false;
-        const errorMessage = `Audio play failed: ${playError.message}`;
-        onError?.(errorMessage);
-        URL.revokeObjectURL(audioUrl);
-        this.currentAudio = null;
-        reject(new Error(errorMessage));
-      });
-    });
-  }
-
-  // Play audio on mobile platform
-  private async playMobileAudio(
-    audioBlob: Blob,
-    onEnd?: () => void,
-    onError?: (error: string) => void
-  ): Promise<void> {
-    try {
-      // Convert blob to base64 for mobile
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      const uri = `data:audio/mpeg;base64,${base64}`;
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true, volume: 0.9 }
-      );
-
-      this.currentAudio = sound;
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          if (status.didJustFinish) {
-            console.log('🎵 Mobile audio playback ended');
-            this.isPlaying = false;
-            onEnd?.();
-            sound.unloadAsync();
-            this.currentAudio = null;
-          }
-        } else if (status.error) {
-          console.error('🎵 Mobile audio error:', status.error);
-          this.isPlaying = false;
-          onError?.(`Mobile audio error: ${status.error}`);
-          sound.unloadAsync();
-          this.currentAudio = null;
-        }
-      });
-
-      console.log('🎵 Mobile audio started playing');
-
-    } catch (error) {
-      console.error('🎵 Mobile audio setup failed:', error);
-      this.isPlaying = false;
-      onError?.(error instanceof Error ? error.message : 'Mobile audio failed');
     }
   }
 
@@ -398,10 +284,7 @@ export class ElevenLabsService {
   ): Promise<void> {
     try {
       console.log('🎵 Using native TTS fallback for persona:', personaId);
-      onStart?.();
-      this.isPlaying = true;
-
-      // Get voice configuration for persona-specific settings
+      
       const voiceConfig = this.getVoiceConfig(personaId);
       
       // Use native speech synthesis
@@ -441,6 +324,8 @@ export class ElevenLabsService {
 
           utterance.onstart = () => {
             console.log('🎵 Native TTS started');
+            this.isPlaying = true;
+            onStart?.();
           };
 
           utterance.onend = () => {
@@ -453,6 +338,14 @@ export class ElevenLabsService {
           utterance.onerror = (event) => {
             console.error('🎵 Native TTS error:', event.error);
             this.isPlaying = false;
+            
+            // Handle specific error types
+            if (event.error === 'interrupted') {
+              console.log('🎵 Speech was interrupted, this is normal when stopping previous speech');
+              resolve(); // Don't treat interruption as an error
+              return;
+            }
+            
             const errorMessage = `Speech synthesis error: ${event.error}`;
             onError?.(errorMessage);
             reject(new Error(errorMessage));
@@ -461,18 +354,28 @@ export class ElevenLabsService {
           // Cancel any existing speech and wait before starting new one
           window.speechSynthesis.cancel();
           
-          // Add delay to allow browser to clear speech queue
+          // Add longer delay to prevent race conditions and "interrupted" errors
           setTimeout(() => {
             try {
-              window.speechSynthesis.speak(utterance);
-              console.log('🎵 Native TTS utterance queued');
+              // Check if speech synthesis is still available
+              if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                // Wait a bit more if still speaking
+                setTimeout(() => {
+                  window.speechSynthesis.speak(utterance);
+                  console.log('🎵 Native TTS utterance queued (after additional wait)');
+                }, 200);
+              } else {
+                window.speechSynthesis.speak(utterance);
+                console.log('🎵 Native TTS utterance queued');
+              }
             } catch (speakError) {
               console.error('🎵 Failed to queue TTS utterance:', speakError);
               this.isPlaying = false;
               onError?.('Failed to start speech synthesis');
               reject(new Error('Failed to start speech synthesis'));
             }
-          }, 100);
+          }, 300); // Increased delay to 300ms
         });
       } else if (Platform.OS !== 'web') {
         // For mobile platforms, use expo-speech if available
@@ -498,6 +401,8 @@ export class ElevenLabsService {
           };
 
           console.log('🎵 Starting Expo Speech with options:', options);
+          this.isPlaying = true;
+          onStart?.();
           await Speech.speak(text, options);
         } catch (speechError) {
           console.error('🎵 Expo Speech not available:', speechError);
@@ -579,23 +484,11 @@ export class ElevenLabsService {
       console.log('🎵 Stopping speech...');
       this.isPlaying = false;
 
-      // Stop web audio
-      if (this.currentAudio && this.currentAudio instanceof HTMLAudioElement) {
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
-        this.currentAudio = null;
-        console.log('🎵 Web audio stopped');
-      }
-
-      // Stop mobile audio
-      if (this.currentAudio && Platform.OS !== 'web') {
-        try {
-          await (this.currentAudio as Audio.Sound).unloadAsync();
-          this.currentAudio = null;
-          console.log('🎵 Mobile audio stopped');
-        } catch (error) {
-          console.warn('🎵 Error stopping mobile audio:', error);
-        }
+      // Stop audio player
+      if (this.audioPlayer) {
+        await this.audioPlayer.stop();
+        this.audioPlayer = null;
+        console.log('🎵 Audio player stopped');
       }
 
       // Stop web speech synthesis
@@ -622,7 +515,35 @@ export class ElevenLabsService {
 
   // Check if currently playing
   isCurrentlyPlaying(): boolean {
-    return this.isPlaying;
+    return this.isPlaying || (this.audioPlayer?.isPlaying() ?? false);
+  }
+
+  // Get available voices (for admin/debug purposes)
+  async getAvailableVoices(): Promise<ElevenLabsVoice[]> {
+    if (!this.isAvailable) {
+      console.log('🎵 ElevenLabs not available for voice listing');
+      return [];
+    }
+
+    try {
+      console.log('🎵 Fetching ElevenLabs voices...');
+      const response = await fetch(`${this.config.baseUrl}/v1/voices`, {
+        headers: {
+          'xi-api-key': this.config.apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch voices: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('🎵 ElevenLabs voices fetched:', data.voices?.length || 0);
+      return data.voices || [];
+    } catch (error) {
+      console.error('🎵 Error fetching ElevenLabs voices:', error);
+      return [];
+    }
   }
 
   // Test voice functionality with comprehensive testing
@@ -679,7 +600,7 @@ export class ElevenLabsService {
       elevenLabsAvailable: this.isAvailable,
       nativeTTSAvailable: this.isNativeTTSAvailable(),
       hasApiKey: !!this.config.apiKey,
-      isPlaying: this.isPlaying,
+      isPlaying: this.isCurrentlyPlaying(),
       platform: Platform.OS,
     };
   }
